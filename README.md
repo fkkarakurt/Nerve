@@ -1,3 +1,5 @@
+![Social](https://raw.githubusercontent.com/fkkarakurt/Nerve/main/social.png)
+
 
 # Nerve | Neural Network Library
 
