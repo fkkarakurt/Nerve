@@ -33,7 +33,7 @@ This code snippet shows how to compute the outputs of a neural network with `ner
 
 float *input;
 float *output;
-nework_t *net;
+network_t *net;
 
 net = net_load(filename of neural network);
 
