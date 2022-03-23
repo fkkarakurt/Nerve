@@ -144,7 +144,7 @@ do
          (count < maximal number of trainings you want to do));
 
 ```
-## Lisans
+## LICENSE
 
 [MIT](https://choosealicense.com/licenses/mit/)
 
