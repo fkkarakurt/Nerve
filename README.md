@@ -26,6 +26,8 @@ It features multilayer backpropagation neural network with settable momentum and
 
 ## Usage
 
+> This project has been tested with Debian and Fedora.
+
 #### Computing a neural network
 
 This code snippet shows how to compute the outputs of a neural network with `nerveNet`.
