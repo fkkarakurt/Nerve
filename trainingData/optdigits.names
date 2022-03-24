@@ -1,0 +1,28 @@
+1. Title of Database: Optical Recognition of Handwritten Digits
+        Original, unnormalized version.
+
+2. Source:
+        E. Alpaydin, C. Kaynak
+        Department of Computer Engineering
+        Bogazici University, 80815 Istanbul Turkey
+        alpaydin@boun.edu.tr
+        September 1998
+
+3. Past Usage:
+        C. Kaynak (1995) Methods of Combining Multiple Classifiers and Their
+        Applications to Handwritten Digit Recognition, 
+        MSc Thesis, Institute of Graduate Studies in Science and 
+        Engineering, Bogazici University.
+        
+4. Class Distribution
+                       train.  valid.  wdep.  windep.
+        Class 0         189      87     100     178
+        Class 1         198      97      94     182
+        Class 2         195      92      93     177
+        Class 3         199      85     105     183
+        Class 4         186     114      87     181
+        Class 5         187     108      81     182
+        Class 6         195      87      95     181
+        Class 7         201      96      90     179
+        Class 8         180      91     109     174
+        Class 9         204      89      89     180
