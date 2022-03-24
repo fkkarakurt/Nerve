@@ -144,6 +144,18 @@ do
          (count < maximal number of trainings you want to do));
 
 ```
+
+## Special Thanks
+
+- [Ethem Alpaydın](https://www.cmpe.boun.edu.tr/~ethem/) For datasets and training set & books.
+- [Cenk Kaynak](https://www.linkedin.com/in/cenk-kaynak-phd-631aa4101/?originalSubdomain=uk) For datasets and training set & articles.
+- [UCI Machine Learning Repository](http://archive.ics.uci.edu/ml/index.php) For datasets.
+- [FANN](http://leenissen.dk/fann/wp/)
+- [Machine Learning, Tom Mitchell](http://www.cs.cmu.edu/~tom/mlbook.html)
+- [comp.ai.neural-nets FAQ](http://www.faqs.org/faqs/ai-faq/neural-nets/part1/)
+- [Peter Van Rossum](https://dblp.org/pid/98/3298.html)
+
+
 ## LICENSE
 
 [MIT](https://choosealicense.com/licenses/mit/)
