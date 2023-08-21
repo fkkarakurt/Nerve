@@ -28,14 +28,33 @@ It features multilayer backpropagation neural network with settable momentum and
 
 > This project has been tested with Debian and Fedora.
 
-#### Computing a neural network
+### Create Network
 
 For example, to create a neural network with 2 neurons in the input layer, 3 neurons in the hidden layer, and 1 neuron in the output layer, you can use a command like this:
 
+> You can modify the following `*.spec` and `*.net` files according to your own testing.
+
 ```bash
 make
-./tests/create_network 3 2 1
+./create_network 3 2 1
 ```
+
+### Training
+
+```bash
+./train_network xornet.spec 
+```
+
+### Show Network
+
+```bash
+./show_network xornet.spec xornet.net 
+```
+
+###
+
+
+
 
 ## Special Thanks
 
