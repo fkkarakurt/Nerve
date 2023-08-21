@@ -62,14 +62,14 @@ void parse_options(int argc, char **argv)
         }
     }
 
-    if (argc != 2)
+    if (argc < 2)
     {
         printf("jolt_network: invalid number of arguments\n");
         printf("Try `jolt_network --help' for more information.\n");
         exit(1);
     }
 
-    strcpy(filename, argv[1]);
+    strcpy(filename, argv[argc - 1]);
 }
 
 // Main
