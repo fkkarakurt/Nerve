@@ -34,7 +34,7 @@ For example, to create a neural network with 2 neurons in the input layer, 3 neu
 
 ```bash
 make
-./tests/show_network 3 2 1
+./tests/create_network 3 2 1
 ```
 
 ## Special Thanks
