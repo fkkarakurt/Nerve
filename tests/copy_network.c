@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "nervNet.h"
+#include "nerveNet.h"
 
 // Hard coded bounds
 

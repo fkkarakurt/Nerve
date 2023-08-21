@@ -4,7 +4,7 @@
 #include <string.h>
 #include <time.h>
 #include "nerveNet.h"
-#include "ocr.h"
+#include "lib/ocr.h"
 
 // Hard coded bounds
 

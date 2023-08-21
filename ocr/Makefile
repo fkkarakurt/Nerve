@@ -1,6 +1,6 @@
 CC := gcc
 CFLAGS += -O2 -g -Wall -W -I../src -Iocrlib
-LIBS := -lm ../src/libnerveNET.a ocrlib/lib.a -lz
+LIBS := -lm ../src/libnerveNET.a ./lib/lib.a -lz
 
 EXECUTABLES := ocr_train ocr_validate
  

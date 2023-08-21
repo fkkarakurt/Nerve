@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "nerveNet.h"
-#include "ocr.h"
+#include "lib/ocr.h"
 
 // Hard coded bounds
 

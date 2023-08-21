@@ -2,7 +2,7 @@ EXECUTABLES := create_network copy_network show_network train_network \
 	jolt_network
 CC := gcc
 CFLAGS += -O2 -g -Wall -W -I../src
-LIBS := -lm ../src/nerveNet.a
+LIBS := -lm ../src/libnerveNET.a
 
 all : $(EXECUTABLES) xornet.net
 
