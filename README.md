@@ -53,7 +53,80 @@ make
 
 > You can use the `-h` or `--help` arguments for all other methods. This will give you information on usage.
 
+### XOR Example
 
+`test.c`:
+
+```c
+#include "nerveNet.h"
+#include <stdio.h>
+#include <math.h>
+
+int main() {
+    // Build the neural network
+    
+    // 2 input neurons, 2 hidden neurons and 1 output neuron
+    int layers[] = {6, 5, 4}; 
+    
+    // a 3-layer network
+    network_t* net = net_allocate_l(3, layers); 
+
+    // Training data
+    
+    // of type float
+    float inputs[][2] = {
+        {0, 0},
+        {0, 1},
+        {1, 0},
+        {1, 1}
+    };
+
+    // of type float
+    float outputs[][1] = { 
+        {0},
+        {1},
+        {1},
+        {0}
+    };
+
+    // Train network
+
+    // training for 10,000 iterations
+    for (int i = 0; i < 10000; i++) { 
+        for (int j = 0; j < 4; j++) {
+            net_compute(net, inputs[j], NULL); 
+        }
+    }
+
+    // Test
+    float result[1];
+    for (int i = 0; i < 4; i++) {
+        net_compute(net, inputs[i], result);
+        printf("Input: %f, %f -> Output: %f\n", inputs[i][0], inputs[i][1], result[0]);
+    }
+
+    // Free the net
+    net_free(net);
+
+    return 0;
+}
+
+```
+
+Compile:
+
+`gcc test.c network.c -o Test`
+
+Run:
+
+`./Test`
+
+> The results still need to be improved. Because in XOR tests:
+> 0 ⊕ 0 = 0
+> 0 ⊕ 1 = 1
+> 1 ⊕ 0 = 1
+> 1 ⊕ 1 = 0
+> we await the results. However, Nerve can give results sometimes close and sometimes far. Try this by changing the number of input, > hidden, and output neurons. You can also change the number of iterations. Different results mean not fully trained. But I hope to > at least get closer to the correct results.
 
 
 ## Special Thanks
