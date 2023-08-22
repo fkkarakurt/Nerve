@@ -122,10 +122,12 @@ Run:
 `./Test`
 
 The results still need to be improved. Because in XOR tests:
+<br/>
 - 0 ⊕ 0 = 0
 - 0 ⊕ 1 = 1
 - 1 ⊕ 0 = 1
 - 1 ⊕ 1 = 0
+<br/>
 we await the results. However, Nerve can give results sometimes close and sometimes far. Try this by changing the number of input, hidden, and output neurons. You can also change the number of iterations. Different results mean not fully trained. But I hope to at least get closer to the correct results.
 
 
