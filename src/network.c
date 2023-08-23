@@ -506,6 +506,9 @@ net_fbscan(FILE *file)
     int no_of_layers, l, nu, *arglist;
     network_t *net;
 
+    // A variable to store the value returned by the fread function
+    size_t read_items;
+
     assert(file != NULL);
 
     if (fread(&no_of_layers, sizeof(int), 1, file) < 1)
@@ -522,16 +525,29 @@ net_fbscan(FILE *file)
     net = net_allocate_l(no_of_layers, arglist);
     free(arglist);
 
-    fread(&net->momentum, sizeof(float), 1, file);
-    fread(&net->learning_rate, sizeof(float), 1, file);
-    fread(&net->global_error, sizeof(float), 1, file);
+    read_items = fread(&net->momentum, sizeof(float), 1, file);
+    if (read_items < 1)
+        return NULL;
+
+    read_items = fread(&net->learning_rate, sizeof(float), 1, file);
+    if (read_items < 1)
+        return NULL;
+
+    read_items = fread(&net->global_error, sizeof(float), 1, file);
+    if (read_items < 1)
+        return NULL;
 
     for (l = 1; l < net->no_of_layers; l++)
     {
         for (nu = 0; nu < net->layer[l].no_of_neurons; nu++)
         {
-            fread(net->layer[l].neuron[nu].weight, sizeof(float),
-                  net->layer[l - 1].no_of_neurons + 1, file);
+            read_items = fread(net->layer[l].neuron[nu].weight, sizeof(float),
+                               net->layer[l - 1].no_of_neurons + 1, file);
+            if (read_items < (size_t)(net->layer[l - 1].no_of_neurons + 1))
+            {
+                net_free(net);
+                return NULL;
+            }
         }
     }
 
