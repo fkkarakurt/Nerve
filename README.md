@@ -34,7 +34,7 @@ For example, to create a neural network with 2 neurons in the input layer, 3 neu
 
 ```bash
 make
-./create_network 3 2 1
+./create_network 3 2 1 -o myNetwork
 ```
 
 > You can modify the following `*.spec` and `*.net` files according to your own testing.
@@ -48,10 +48,11 @@ make
 ### Show Network
 
 ```bash
-./show_network xornet.spec xornet.net 
+./show_network myNetwork xornet.net 
 ```
 
 > You can use the `-h` or `--help` arguments for all other methods. This will give you information on usage.
+
 
 ### XOR Example
 
