@@ -2,7 +2,7 @@ CC := gcc
 CFLAGS += -O2 -g -Wall -W -I../../src
 
 lib.a : train.o sample.o fileio.o
-	ar cru $@ $^
+	ar crU $@ $^
 	ranlib $@
  
 indent :

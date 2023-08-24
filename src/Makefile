@@ -4,7 +4,7 @@ CFLAGS += -g -O2 -Wall -W -Winline -finline-limit=1200
 all : libnerveNET.a
 
 libnerveNET.a : network.o
-	ar cru $@ $^
+	ar crU $@ $^
 	ranlib $@
 
 interpolation.c : generate_sigma
