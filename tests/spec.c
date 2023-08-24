@@ -21,20 +21,34 @@ int read_specification(char *filename, int *no_of_inputs, int *no_of_outputs,
 
     do
     {
-        fgets(line, MAX_LINE_LENGTH, file);
+        if (fgets(line, MAX_LINE_LENGTH, file) == NULL)
+        {
+            fclose(file);
+            return -1;
+        }
     } while (line[0] == '#');
     sscanf(line, "%i\n", no_of_inputs);
 
     do
     {
-        fgets(line, MAX_LINE_LENGTH, file);
+        if (fgets(line, MAX_LINE_LENGTH, file) == NULL)
+        {
+            fclose(file);
+            return -1;
+        }
     } while (line[0] == '#');
     sscanf(line, "%i\n", no_of_outputs);
 
     *no_of_pairs = 0;
     in = input;
     tar = target;
-    fgets(line, MAX_LINE_LENGTH, file);
+
+    if (fgets(line, MAX_LINE_LENGTH, file) == NULL)
+    {
+        fclose(file);
+        return -1;
+    }
+
     do
     {
         if (line[0] != '#')
@@ -45,7 +59,11 @@ int read_specification(char *filename, int *no_of_inputs, int *no_of_outputs,
                 sscanf(index, "%f%n", in++, &skipped);
                 index += skipped;
             }
-            fgets(line, MAX_LINE_LENGTH, file);
+            if (fgets(line, MAX_LINE_LENGTH, file) == NULL)
+            {
+                fclose(file);
+                return -1;
+            }
             index = line;
             for (i = 0; i < *no_of_outputs; i++)
             {
@@ -54,7 +72,14 @@ int read_specification(char *filename, int *no_of_inputs, int *no_of_outputs,
             }
             (*no_of_pairs)++;
         }
-        fgets(line, MAX_LINE_LENGTH, file);
+        if (fgets(line, MAX_LINE_LENGTH, file) == NULL && !feof(file))
+        {
+            fclose(file);
+            return -1;
+        }
     } while (!feof(file));
+    
+    fclose(file);
+
     return 0;
 }
