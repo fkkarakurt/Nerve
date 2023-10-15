@@ -88,32 +88,64 @@ int main(int argc, char **argv)
 #define inputs(i) (input + i * no_of_inputs)
 #define targets(i) (target + i * no_of_outputs)
 
+    // for (i = 0; i < no_of_pairs; i++)
+    // {
+    //     net_compute(net, inputs(i), output);
+
+    //     error = net_compute_output_error(net, targets(i));
+
+    //     for (j = 0; j < no_of_inputs; j++)
+    //     {
+    //         printf("%.3f ", *(inputs(i) + j));
+    //     }
+    //     printf("->");
+    //     for (j = 0; j < no_of_outputs; j++)
+    //     {
+    //         printf(" %.3f", *(output + j));
+    //     }
+    //     printf(" (");
+    //     for (j = 0; j < no_of_outputs; j++)
+    //     {
+    //         printf("%.3f", *(targets(i) + j));
+    //         if (j != no_of_outputs - 1)
+    //         {
+    //             printf(" ");
+    //         }
+    //     }
+    //     printf(") %.5f\n", error);
+    // }
+
     for (i = 0; i < no_of_pairs; i++)
     {
         net_compute(net, inputs(i), output);
 
         error = net_compute_output_error(net, targets(i));
 
+        printf("Testing for input: ");
         for (j = 0; j < no_of_inputs; j++)
         {
             printf("%.3f ", *(inputs(i) + j));
         }
-        printf("->");
+        printf("\n");
+
+        printf("Output: ");
         for (j = 0; j < no_of_outputs; j++)
         {
-            printf(" %.3f", *(output + j));
+            printf("%.3f ", *(output + j));
         }
-        printf(" (");
+        printf("Expected: ");
         for (j = 0; j < no_of_outputs; j++)
         {
-            printf("%.3f", *(targets(i) + j));
-            if (j != no_of_outputs - 1)
-            {
-                printf(" ");
-            }
+            printf("%.3f ", *(targets(i) + j));
         }
-        printf(") %.5f\n", error);
+        printf("Error: %.5f\n", error);
+        printf("----------------------------\n");
     }
+
+    // for (j = 0; j < no_of_inputs; j++)
+    // {
+    //     printf("%.3f ", *(inputs(i) + j));
+    // }
 
     return 0;
 }
