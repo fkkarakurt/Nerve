@@ -1,25 +1,35 @@
-all :
+all:
 	$(MAKE) -C src
 	$(MAKE) -C tests
 	$(MAKE) -C ocr/lib
 	$(MAKE) -C ocr
 
-clean :
+debug: all
+
+release: all
+
+clean:
 	$(MAKE) -C src clean
 	$(MAKE) -C tests clean
 	$(MAKE) -C ocr/lib clean
 	$(MAKE) -C ocr clean
 
-clean-all :
+clean-all:
 	$(MAKE) -C src clean-all
 	$(MAKE) -C tests clean-all
 	$(MAKE) -C ocr/lib clean-all
 	$(MAKE) -C ocr clean-all
 
-version :
+clean-dist:
+	@rm -f nerveNet-*.tar.gz
+
+distclean: clean-all clean-dist
+
+version:
+	@echo "nerveNet version"
 	$(MAKE) -C src version
 
-source-dist :
+source-dist:
 	$(MAKE) -C ocr network1.net network2.net
 	$(MAKE) -C src src-dist
 	$(MAKE) -C tests src-dist
@@ -32,5 +42,15 @@ source-dist :
 	    --gzip --verbose nerveNet-$${VERSION} ; \
 	mv /tmp/nerveNet-$${VERSION}.tar.gz .)
 
+test: all
+	$(MAKE) -C tests test
 
+help:
+	@echo "Available targets:"
+	@echo "  all        - Build everything"
+	@echo "  clean      - Remove object files"
+	@echo "  clean-all  - Remove all generated files"
+	@echo "  test       - Run tests"
+	@echo "  source-dist - Create source distribution"
 
+.PHONY: all debug release clean clean-all clean-dist distclean version source-dist test help
