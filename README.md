@@ -312,7 +312,7 @@ gcc -O2 examples/01_xor.c -o xor -lm
 ```bib
 @software{nerve,
   author       = {Fatih Küçükkarakurt},
-  title        = {{Nerve: Zero-dependency neural network library in pure C}},
+  title        = {{Nerve: Technical Reference Manual — A Zero-Dependency Single-Header Multilayer Perceptron Library for ANSI C}},
   year         = 2026,
   publisher    = "Nerve Developer",
   doi          = {10.5281/zenodo.20432307},
