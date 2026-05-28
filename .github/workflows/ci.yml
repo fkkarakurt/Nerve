@@ -33,22 +33,17 @@ jobs:
 
   # ── macOS ──────────────────────────────────────────────────────────────────
   macos:
-    name: GCC / macOS
+    name: Clang / macOS
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install gcc
-        run: brew install gcc
-
       - name: Build all examples
         run: |
           set -e
-          # use Homebrew gcc, not Apple clang
-          GCC=$(ls /usr/local/bin/gcc-* 2>/dev/null | head -1 || ls /opt/homebrew/bin/gcc-* 2>/dev/null | head -1 || echo gcc)
           for f in examples/0[1-9]_*.c examples/1[0-2]_*.c; do
             printf "  build %-45s" "$f"
-            $GCC -O2 -Wall -std=c99 "$f" -o /tmp/nerve_ex -lm
+            cc -O2 -Wall -std=c99 "$f" -o /tmp/nerve_ex -lm
             echo "OK"
           done
 
