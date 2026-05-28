@@ -105,3 +105,6 @@ trainingData/optdigits.windependent/
 
 # -- Obsolete assets ------------------------------------------------------------
 structure.png
+
+# -- Legacy archive ----------------------------------------------------------
+legacy_archive.zip

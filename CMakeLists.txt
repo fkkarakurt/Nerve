@@ -5,7 +5,7 @@ project(nerve
     LANGUAGES C
 )
 
-set(CMAKE_C_STANDARD 90)
+set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
@@ -13,9 +13,7 @@ set(CMAKE_C_EXTENSIONS OFF)
 # Options
 # --------------------------------------------------------------------------
 option(NERVE_BUILD_EXAMPLES "Build all examples"       ON)
-option(NERVE_BUILD_TESTS    "Build test utilities"     ON)
 option(NERVE_BUILD_GAMES    "Build terminal AI games"  ON)
-option(NERVE_BUILD_STATIC   "Build libnerveNET static library from src/" OFF)
 
 # --------------------------------------------------------------------------
 # Header-only interface target  (the canonical usage)
@@ -39,17 +37,9 @@ target_include_directories(nerve INTERFACE
     $<INSTALL_INTERFACE:include>
 )
 
-# Link math library where it is a separate library (POSIX systems)
 find_library(NERVE_MATH_LIB m)
 if(NERVE_MATH_LIB)
     target_link_libraries(nerve INTERFACE ${NERVE_MATH_LIB})
-endif()
-
-# --------------------------------------------------------------------------
-# Optional static library from src/ (faster sigmoid via lookup table)
-# --------------------------------------------------------------------------
-if(NERVE_BUILD_STATIC)
-    add_subdirectory(src)
 endif()
 
 # --------------------------------------------------------------------------
@@ -57,13 +47,6 @@ endif()
 # --------------------------------------------------------------------------
 if(NERVE_BUILD_EXAMPLES OR NERVE_BUILD_GAMES)
     add_subdirectory(examples)
-endif()
-
-# --------------------------------------------------------------------------
-# Test utilities
-# --------------------------------------------------------------------------
-if(NERVE_BUILD_TESTS)
-    add_subdirectory(tests)
 endif()
 
 # --------------------------------------------------------------------------
@@ -85,7 +68,6 @@ install(EXPORT nerveTargets
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/nerve
 )
 
-# Package version file
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
     "${CMAKE_CURRENT_BINARY_DIR}/nerveConfigVersion.cmake"
