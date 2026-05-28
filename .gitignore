@@ -1,61 +1,78 @@
-# VSCode Environment
-.vscode
-
-# Prerequisites
-*.d
-
-# Object files
+# ── C build artifacts ────────────────────────────────────────────────────────
 *.o
-*.ko
-*.obj
-*.elf
-
-# Linker output
-*.ilk
-*.map
-*.exp
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Libraries
-*.lib
 *.a
 *.la
 *.lo
-
-# Shared objects (inc. Windows DLLs)
-*.dll
 *.so
 *.so.*
 *.dylib
-
-# Executables
+*.dll
 *.exe
 *.out
 *.app
-*.i*86
-*.x86_64
 *.hex
 
-# Debug files
-*.dSYM/
-*.su
-*.idb
+# ── C debug / dependency ──────────────────────────────────────────────────────
+*.d
 *.pdb
+*.idb
+*.su
+*.dSYM/
 
-# Kernel Module Compile Results
-*.mod*
-*.cmd
-.tmp_versions/
-modules.order
-Module.symvers
-Mkfile.old
-dkms.conf
+# ── Generated sources ─────────────────────────────────────────────────────────
+src/interpolation.c
+generate_sigma
 
+# ── Trained model files ───────────────────────────────────────────────────────
+*.net
+*.bin
 
-# Custom
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.env
+venv/
+
+# ── OS metadata ───────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# ── Editors / IDEs ────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.bak
+*.orig
+*.rej
+*.sublime-project
+*.sublime-workspace
+
+# ── Profiling / tracing ───────────────────────────────────────────────────────
+callgrind.out.*
+gmon.out
+perf.data
+perf.data.old
+
+# ── Archives ──────────────────────────────────────────────────────────────────
+*.tar.gz
+*.tar.bz2
+*.zip
+*.7z
+
+# ── Legacy test artifacts ─────────────────────────────────────────────────────
 Test
 test.*
 success_*
+*.log
+
+# ── Obsolete assets ───────────────────────────────────────────────────────────
+structure.png

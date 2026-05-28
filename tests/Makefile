@@ -1,5 +1,5 @@
 EXECUTABLES := create_network copy_network show_network train_network \
-	jolt_network
+	jolt_network benchmark
 CC := gcc
 CFLAGS += -O2 -g -Wall -W -I../src
 LIBS := -lm ../src/libnerveNET.a
@@ -19,7 +19,10 @@ train_network : train_network.o spec.o
 	$(CC) -o $@ $^ $(LIBS) 
 
 jolt_network : jolt_network.o
-	$(CC) -o $@ $^ $(LIBS) 
+	$(CC) -o $@ $^ $(LIBS)
+
+benchmark : benchmark.o
+	$(CC) -o $@ $^ $(LIBS)
 
 xornet.net : train_network xornet.spec
 	./train_network -n3 -e0.0001 xornet.spec -oxornet.net > /dev/null
@@ -27,7 +30,10 @@ xornet.net : train_network xornet.spec
 indent :
 	indent -TFILE --no-tabs *.[ch]
 
-clean : 
+bench : benchmark
+	./benchmark
+
+clean :
 	-rm -f *.o $(EXECUTABLES)
 	-rm -f xornet.net
 

@@ -108,7 +108,7 @@ int main(int argc, char **argv)
 {
     network_t *net;
 
-    srandom(time(0));
+    srand((unsigned int)time(0));
 
     parse_options(argc, argv);
 
