@@ -240,29 +240,42 @@ Canonical non-linear benchmark that no linear classifier can solve. Renders an A
 $ gcc -O2 examples/07_spiral.c -o spiral -lm && ./spiral
 
 Nerve 2.0.0 -- 3-Class Spiral Classification
-Architecture: 2-64-64-3 | Adam + ReLU | He Init
-Dataset: 300 train + 90 test  (3 classes x 100/30 points)
+Architecture: 2-32-32-3 | Adam + ReLU | He Init
+Dataset: 180 train + 60 test  (3 classes x 60/20 points)
 
 Training...
-  Epoch 1000 | MSE: 0.0821 | Test Acc: 92.2%
-  Epoch 2000 | MSE: 0.0512 | Test Acc: 95.6%
-  Epoch 3000 | MSE: 0.0389 | Test Acc: 97.8%
-  ...
+  Epoch  500 | MSE: 0.0151 | Test Acc: 98.3%
+  Epoch 1000 | MSE: 0.0153 | Test Acc: 98.3%
+  Epoch 1500 | MSE: 0.0125 | Test Acc: 98.3%
+  Epoch 2000 | MSE: 0.0302 | Test Acc: 96.7%
+  Epoch 2500 | MSE: 0.0136 | Test Acc: 98.3%
 
-Final Test Accuracy: 97.8%  (88 / 90)
+Final Test Accuracy: 98.3%  (59 / 60)
 
 Decision Boundary (. = Class 0  X = Class 1  O = Class 2):
   +--------------------------------------------------------------+
+  |XXXXXXXXXXXX..................................................|
+  |XXXXXXXXXXXXXXXXXXXXX.........................................|
+  |XXXXXXXXXXXXXXXXXXXXXXXXXXX...................................|
+  |XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX........................|
+  |XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX...................|
+  |XXXXXXXXXXXXXXXXXXXXXXXXXOOOOOOOOOOXXXXXXXXXXX................|
+  |XXXXXXXXXXXXXXXXXXOOOOOOOOOOOOOOOOOOOOXXXXXXXXXX..............|
+  |XXXXXXXXXXXXXXXOOOOOOOOOOOOOOOOOOOOOOOOOXXXXXXXXXX............|
+  |XXXXXXXXXXXXOOOOOOOOOO...........OOOOOOOOXXXXXXXXXX...........|
+  |XXXXXXXXXXXOOOOOOOO................OOOOOOOOXXXXXXXX...........|
+  |XXXXXXXXXXOOOOOOO........XXXX.......OOOOOOXXXXXXXXX...........|
+  |XXXXXXXXXXOOOOOOO......XXXXXXOOOOOOOOOOOOXXXXXXXXXX...........|
+  |XXXXXXXXXXOOOOOOOO.....XXXXXXOOOOOOOOOOOXXXXXXXXX.............|
+  |XXXXXXXXXXXOOOOOOO......XXXXXXXXXXXXXXXXXXXXXX................|
+  |XXXXXXXXXXXXOOOOOOOO.......XXXXXXXXXXXXXXX...........OOOOOOOOO|
+  |XXXXXXXXXXXXOOOOOOOOOO..........XXXXXX.........OOOOOOOOOOOOOOO|
+  |XXXXXXXXOOOOOOOOOOOOOOOOOO.................OOOOOOOOOOOOOOOOOOO|
+  |XXOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO|
   |OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO|
-  |OOOOOOOOOOOOOOOOOOOOO.......OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO|
-  |.....OOOOOOOOO.......XXXXXXXXXX.......OOOOOOOOOOOOOOOXXXXXXXXX|
-  |...........XXXXXXOOOOOOOOOOOOOOOOOOOXXX.....OOOOOOOXXXXXXXXXX.|
-  |..........XXXXXXOOOO.....XXXXXXOOOOOOXX.....OOOOOXXXXXXXXXX...|
-  |..............XXXXXXXXXXXXXXXXXXXXXXXXXXXOOOOOOXXXXXXXXXXXXX...|
-  |....................XXXXXXXXXXXXXXXXXXXXX.OOOOOXXXXXXXXXX......|
-  |.........................XXXXXXXXXXXX....OOOOOOXXXXXXXXX.......|
-  |.....................................XXXXOOOOOXXXXXXXXXX.......|
-  |.......................................XXXXXXXXXXXXXXXXXXXX....|
+  |OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO|
+  |OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO|
+  |OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO|
   +--------------------------------------------------------------+
 ```
 

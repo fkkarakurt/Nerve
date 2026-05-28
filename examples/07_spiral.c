@@ -8,7 +8,7 @@
  *
  * After training an ASCII grid shows the learned decision boundary.
  *
- * Architecture: 2-64-64-3 | Adam + ReLU | He Init
+ * Architecture: 2-32-32-3 | Adam + ReLU | He Init
  *
  * Build:  gcc -O2 07_spiral.c -o spiral -lm
  * Run:    ./spiral
@@ -22,14 +22,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define N_PER_CLASS 100          /* training points per class  */
-#define N_TEST_CLS   30          /* test points per class       */
+#define N_PER_CLASS  60          /* training points per class  */
+#define N_TEST_CLS   20          /* test points per class       */
 #define N_CLS         3
 #define N_TRAIN      (N_PER_CLASS * N_CLS)
 #define N_TEST       (N_TEST_CLS  * N_CLS)
 #define N_IN          2
 #define N_OUT         3
-#define EPOCHS     5000
+#define EPOCHS     2500
 
 #define PI 3.14159265f
 
@@ -133,15 +133,15 @@ int main(void)
     test_tgt  = all_tgt + N_TRAIN * N_OUT;
 
     srand(42);
-    net = net_allocate(4, N_IN, 64, 64, N_OUT);
+    net = net_allocate(4, N_IN, 32, 32, N_OUT);
     net_set_optimizer(net,   NERVENET_OPTIMIZER_ADAM);
     net_set_activation(net,  NERVENET_ACTIVATION_RELU);
     net_initialize_he(net);
-    net_set_learning_rate(net, 0.002f);
+    net_set_learning_rate(net, 0.003f);
     net_set_l2_lambda(net, 5e-5f);
 
     printf("Nerve %s -- 3-Class Spiral Classification\n", net_get_version());
-    printf("Architecture: 2-64-64-3 | Adam + ReLU | He Init\n");
+    printf("Architecture: 2-32-32-3 | Adam + ReLU | He Init\n");
     printf("Dataset: %d train + %d test  (%d classes x %d/%d points)\n\n",
            N_TRAIN, N_TEST, N_CLS, N_PER_CLASS, N_TEST_CLS);
     printf("Training...\n");
@@ -149,7 +149,7 @@ int main(void)
     for (i = 1; i <= EPOCHS; i++) {
         mse = net_train_epoch(net, train_in, train_tgt,
                               N_TRAIN, N_IN, N_OUT, 32);
-        if (i % 1000 == 0) {
+        if (i % 500 == 0) {
             acc = net_compute_accuracy(net, test_in, test_tgt,
                                        N_TEST, N_IN, N_OUT);
             printf("  Epoch %4d | MSE: %.4f | Test Acc: %.1f%%\n",
