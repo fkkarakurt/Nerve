@@ -18,7 +18,7 @@
 
 [![Platforms](https://img.shields.io/badge/platforms-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20embedded-lightgrey.svg)]()
 
-> 📖 [**Documentation & Scientific Manual**](#)
+> 📖 [**Documentation & Scientific Manual**](https://github.com/fkkarakurt/Nerve/blob/main/nerve_manual.pdf)
 
 </div>
 
