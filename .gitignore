@@ -1,4 +1,4 @@
-# ── C build artifacts ────────────────────────────────────────────────────────
+# -- C build artifacts ----------------------------------------------------------
 *.o
 *.a
 *.la
@@ -12,39 +12,38 @@
 *.app
 *.hex
 
-# ── C debug / dependency ──────────────────────────────────────────────────────
+# -- C debug / dependency -------------------------------------------------------
 *.d
 *.pdb
 *.idb
 *.su
 *.dSYM/
 
-# ── Generated sources ─────────────────────────────────────────────────────────
+# -- Generated sources ----------------------------------------------------------
 src/interpolation.c
 generate_sigma
 
-# ── Trained model files ───────────────────────────────────────────────────────
+# -- Trained model files --------------------------------------------------------
 *.net
 *.bin
 
-# ── Python ────────────────────────────────────────────────────────────────────
+# -- Python ---------------------------------------------------------------------
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 *.egg-info/
 dist/
-build/
 .env
 venv/
 
-# ── OS metadata ───────────────────────────────────────────────────────────────
+# -- OS metadata ----------------------------------------------------------------
 .DS_Store
 Thumbs.db
 desktop.ini
 ehthumbs.db
 
-# ── Editors / IDEs ────────────────────────────────────────────────────────────
+# -- Editors / IDEs -------------------------------------------------------------
 .vscode/
 .idea/
 *.swp
@@ -56,23 +55,53 @@ ehthumbs.db
 *.sublime-project
 *.sublime-workspace
 
-# ── Profiling / tracing ───────────────────────────────────────────────────────
+# -- Profiling / tracing --------------------------------------------------------
 callgrind.out.*
 gmon.out
 perf.data
 perf.data.old
 
-# ── Archives ──────────────────────────────────────────────────────────────────
+# -- Archives -------------------------------------------------------------------
 *.tar.gz
 *.tar.bz2
 *.zip
 *.7z
 
-# ── Legacy test artifacts ─────────────────────────────────────────────────────
+# -- Legacy test artifacts ------------------------------------------------------
 Test
 test.*
 success_*
 *.log
 
-# ── Obsolete assets ───────────────────────────────────────────────────────────
+# -- CMake build artifacts ------------------------------------------------------
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+CPack*.cmake
+_CPack_Packages/
+install_manifest.txt
+# generated .cmake files (keep CMakeLists.txt)
+*.cmake
+!CMakeLists.txt
+
+# -- CMake out-of-source build directories --------------------------------------
+build/
+_build/
+cmake-build-*/
+out/
+
+# -- Doxygen generated documentation --------------------------------------------
+docs/output/
+docs/html/
+docs/latex/
+docs/*.tmp
+
+# -- OCR training data (large binaries -- download separately) ------------------
+trainingData/optdigits.training/
+trainingData/optdigits.validation/
+trainingData/optdigits.wdependent/
+trainingData/optdigits.windependent/
+
+# -- Obsolete assets ------------------------------------------------------------
 structure.png

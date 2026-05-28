@@ -285,6 +285,71 @@ const char *net_get_version(void);
 #endif
 
 /* ═══════════════════════════════════════════════════════════════════════
+ *  EASY API  —  high-level convenience wrapper
+ *
+ *  Topology string format:  "2->8->1"  or  "784->128->64->10"
+ *
+ *  Minimal example (XOR in five lines):
+ *
+ *      float X[] = {1,1, 1,0, 0,1, 0,0};
+ *      float y[] = {  0,   1,   1,   0};
+ *      nerve_t *net = nerve_new("2->4->1");
+ *      nerve_fit(net, X, y, 4, 5000);
+ *      nerve_free(net);
+ *
+ *  All nerve_* names are thin wrappers / macros over the core net_* API.
+ *  Both APIs can be mixed freely within the same translation unit.
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+/* nerve_t is identical to network_t — just a shorter alias */
+typedef network_t nerve_t;
+
+/* Optional configuration passed to nerve_new_ex() */
+typedef struct {
+    int   optimizer;  /* NERVENET_OPTIMIZER_*    default: ADAM  */
+    int   activation; /* NERVENET_ACTIVATION_*   default: TANH  */
+    float lr;         /* learning rate; 0 -> 0.01               */
+    float l2;         /* L2 lambda;     0 = disabled            */
+    float dropout;    /* dropout rate;  0 = disabled            */
+    int   seed;       /* RNG seed; -1 = auto from time()        */
+} nerve_config_t;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* Create a network from a topology string, e.g. "2->8->1" */
+nerve_t       *nerve_new(const char *topology);
+
+/* Same as nerve_new but with explicit configuration */
+nerve_t       *nerve_new_ex(const char *topology, const nerve_config_t *cfg);
+
+/* Return the default configuration (Adam, Tanh, lr=0.01) */
+nerve_config_t nerve_default_config(void);
+
+/* Train for `epochs` passes over the dataset (silent) */
+void  nerve_fit(nerve_t *net, const float *X, const float *y,
+                int n_samples, int epochs);
+
+/* Train and print progress every `print_every` epochs (0 = silent) */
+void  nerve_fit_verbose(nerve_t *net, const float *X, const float *y,
+                        int n_samples, int epochs, int print_every);
+
+/* Classification accuracy over the dataset; targets must be one-hot */
+float nerve_score(nerve_t *net, const float *X, const float *y, int n_samples);
+
+#ifdef __cplusplus
+}
+#endif
+
+/* Thin macro aliases for the remaining core functions */
+#define nerve_predict(net, x, out)  net_compute((net), (x), (out))
+#define nerve_classify(net, x)      net_classify((net), (x))
+#define nerve_save(net, path)       net_save((path), (net))
+#define nerve_load(path)            net_load(path)
+#define nerve_free(net)             net_free(net)
+
+/* ═══════════════════════════════════════════════════════════════════════
  *  IMPLEMENTATION
  *  (compiled only when NERVE_IMPLEMENTATION is defined)
  * ═══════════════════════════════════════════════════════════════════════ */
@@ -1190,6 +1255,98 @@ int net_validate(const network_t *net)
 }
 
 const char *net_get_version(void) { return NERVENET_VERSION; }
+
+/* ── Easy API implementation ──────────────────────────────────────────── */
+
+/* Parse "2->8->1" or "784 128 10" into an int array; return layer count */
+static int nerve__parse_topo(const char *topo, int *sizes, int max)
+{
+    int n = 0, v;
+    const char *p = topo;
+    char *end;
+    while (*p) {
+        while (*p == ' ' || *p == '-' || *p == '>') p++;
+        if (!*p) break;
+        v = (int)strtol(p, &end, 10);
+        if (end == p) break;
+        if (n < max) sizes[n] = v;
+        n++;
+        p = end;
+    }
+    return n;
+}
+
+nerve_config_t nerve_default_config(void)
+{
+    nerve_config_t c;
+    c.optimizer  = NERVENET_OPTIMIZER_ADAM;
+    c.activation = NERVENET_ACTIVATION_TANH;
+    c.lr         = 0.01f;
+    c.l2         = 0.0f;
+    c.dropout    = 0.0f;
+    c.seed       = -1;
+    return c;
+}
+
+nerve_t *nerve_new_ex(const char *topology, const nerve_config_t *cfg)
+{
+    int sizes[NERVENET_MAX_LAYERS];
+    int n;
+    nerve_t *net;
+    nerve_config_t def;
+    if (!cfg) { def = nerve_default_config(); cfg = &def; }
+    n = nerve__parse_topo(topology, sizes, NERVENET_MAX_LAYERS);
+    if (n < 2) return NULL;
+    if (cfg->seed >= 0) srand((unsigned int)cfg->seed);
+    else                srand((unsigned int)time(NULL));
+    net = net_allocate_l(n, sizes);
+    if (!net) return NULL;
+    net_set_optimizer(net,  (nervenet_optimizer_t)cfg->optimizer);
+    net_set_activation(net, (nervenet_activation_t)cfg->activation);
+    net_set_learning_rate(net, cfg->lr > 0.0f ? cfg->lr : 0.01f);
+    net_set_l2_lambda(net, cfg->l2);
+    if (cfg->dropout > 0.0f) net_set_dropout(net, cfg->dropout);
+    if (cfg->activation == NERVENET_ACTIVATION_RELU ||
+        cfg->activation == NERVENET_ACTIVATION_LEAKY_RELU)
+        net_initialize_he(net);
+    else
+        net_initialize_xavier(net);
+    return net;
+}
+
+nerve_t *nerve_new(const char *topology)
+{
+    return nerve_new_ex(topology, NULL);
+}
+
+void nerve_fit_verbose(nerve_t *net, const float *X, const float *y,
+                       int n_samples, int epochs, int print_every)
+{
+    int n_in, n_out, e;
+    float mse;
+    assert(net && X && y && n_samples > 0 && epochs > 0);
+    n_in  = net_get_no_of_inputs(net);
+    n_out = net_get_no_of_outputs(net);
+    for (e = 1; e <= epochs; e++) {
+        mse = net_train_epoch(net, X, y, n_samples, n_in, n_out, 1);
+        if (print_every > 0 && e % print_every == 0)
+            printf("  epoch %5d / %d   MSE: %.6f\n", e, epochs, mse);
+    }
+}
+
+void nerve_fit(nerve_t *net, const float *X, const float *y,
+               int n_samples, int epochs)
+{
+    nerve_fit_verbose(net, X, y, n_samples, epochs, 0);
+}
+
+float nerve_score(nerve_t *net, const float *X, const float *y, int n_samples)
+{
+    assert(net && X && y && n_samples > 0);
+    return net_compute_accuracy(net, X, y, n_samples,
+                                net_get_no_of_inputs(net),
+                                net_get_no_of_outputs(net));
+}
 
 #endif /* NERVE_IMPLEMENTATION */
 #endif /* NERVE_H */
