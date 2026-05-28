@@ -18,6 +18,8 @@
 
 [![Platforms](https://img.shields.io/badge/platforms-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20embedded-lightgrey.svg)]()
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20432307.svg)](https://doi.org/10.5281/zenodo.20432307)
+
 > 📖 [**Documentation & Scientific Manual**](https://github.com/fkkarakurt/Nerve/blob/main/nerve_manual.pdf)
 
 </div>
@@ -303,6 +305,19 @@ cmake -B build && cmake --build build
 
 # Individual example
 gcc -O2 examples/01_xor.c -o xor -lm
+```
+
+## Citation
+
+```bib
+@software{nerve,
+  author       = {Fatih Küçükkarakurt},
+  title        = {{Nerve: Zero-dependency neural network library in pure C}},
+  year         = 2026,
+  publisher    = "Nerve Developer",
+  doi          = {10.5281/zenodo.20432307},
+  url          = {https://doi.org/10.5281/zenodo.20432307}
+}
 ```
 
 ---
