@@ -307,25 +307,6 @@ gcc -O2 examples/01_xor.c -o xor -lm
 
 ---
 
-## Project Structure
-
-```
-nerve.h                      ← the entire library
-examples/
-  01_xor.c … 09_*.c          ← learning examples
-  10_snake_ai.c              ← Snake via neuroevolution
-  11_pong_ai.c               ← Pong: net vs bot
-  12_flappy_ai.c             ← Flappy Bird: 20 birds live
-assets/
-  nerve-flappy-ai.gif        ← demo GIF
-docs/
-  Doxyfile                   ← API reference generator
-  mathematics.dox            ← LaTeX formula reference
-  latex/nerve_manual.tex     ← Scientific manual source
-```
-
----
-
 ## License
 
 Copyright (C) 2026 Fatih Küçükkarakurt
