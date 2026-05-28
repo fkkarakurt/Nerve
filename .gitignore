@@ -107,7 +107,6 @@ docs/latex/*.fdb_latexmk
 docs/latex/*.fls
 docs/latex/*.synctex.gz
 docs/latex/*.pdf
-docs/
 
 # -- OCR training data (large binaries -- download separately) ------------------
 trainingData/optdigits.training/
