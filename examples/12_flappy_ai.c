@@ -71,8 +71,8 @@ static void enable_vt100(void) {}
 #define FRAME_MS  45
 
 /* ---- ANSI ------------------------------------------------------------- */
-#define CLR()  fputs("\033[2J\033[H",stdout)
-#define HIDE() fputs("\033[?25l",   stdout)
+#define CLR()  fputs("\033[H",           stdout)   /* home only — no flash */
+#define HIDE() fputs("\033[?25l\033[2J\033[H",stdout) /* hide + one-time clear */
 #define SHOW() fputs("\033[?25h",   stdout)
 #define GRN  "\033[32m"
 #define YEL  "\033[33m"
@@ -250,7 +250,7 @@ static void draw_world(int gen, int alive, int best_pipes)
     CLR();
     printf(BLD "  Nerve Flappy Bird AI" RST
            "  gen %d  |  alive " GRN "%d" RST "/" GRN "%d" RST
-           "  |  best " YEL "%d pipes" RST "\n\n",
+           "  |  best " YEL "%d pipes" RST "\033[K\n\n",
            gen, alive, POP, best_pipes);
 
     printf("  " CYN "+");
@@ -271,7 +271,7 @@ static void draw_world(int gen, int alive, int best_pipes)
     printf("  " CYN "+");
     for (c = 0; c < DISP_W; c++) printf("-");
     printf("+" RST "\n\n");
-    printf(DIM "  Net: %d->%d->%d  |  Pop: %d  |  Elite: %d  |  Ctrl+C to exit\n" RST,
+    printf(DIM "  Net: %d->%d->%d  |  Pop: %d  |  Elite: %d  |  Ctrl+C to exit\033[K\n" RST,
            N_IN, N_HID, N_OUT, POP, ELITE);
     fflush(stdout);
 }

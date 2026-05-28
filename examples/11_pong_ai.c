@@ -73,8 +73,8 @@ static void enable_vt100(void) {}
 #define FRAME_MS  16
 
 /* ---- ANSI ------------------------------------------------------------- */
-#define CLR()  fputs("\033[2J\033[H",stdout)
-#define HIDE() fputs("\033[?25l",   stdout)
+#define CLR()  fputs("\033[H",           stdout)   /* home only — no flash */
+#define HIDE() fputs("\033[?25l\033[2J\033[H",stdout) /* hide + one-time clear */
 #define SHOW() fputs("\033[?25h",   stdout)
 #define GRN  "\033[32m"
 #define YEL  "\033[33m"
@@ -173,7 +173,7 @@ static void draw(const Pong *g, int gen, int best_ai, float best_fit, int live)
     float out_val;
 
     CLR();
-    printf(BLD "  Nerve Pong AI" RST "  generation %d  |  %s\n\n",
+    printf(BLD "  Nerve Pong AI" RST "  generation %d  |  %s\033[K\n\n",
            gen, live ? GRN "LIVE SHOWCASE" RST : DIM "evaluating..." RST);
 
     /* top border */
@@ -206,14 +206,14 @@ static void draw(const Pong *g, int gen, int best_ai, float best_fit, int live)
         case 9:  printf("  Pop: %d  Elite: %d", POP, ELITE);        break;
         case 11: printf("  Matches/agent: %d", MATCHES);            break;
         }
-        printf("\n");
+        printf("\033[K\n");
     }
     (void)out_val;
 
     printf("  " CYN "+");
     for (c = 0; c < CW; c++) printf("-");
     printf("+" RST "\n\n");
-    printf(DIM "  AI = Left  |  Bot = Right  |  Ctrl+C to exit\n" RST);
+    printf(DIM "  AI = Left  |  Bot = Right  |  Ctrl+C to exit\033[K\n" RST);
     fflush(stdout);
 }
 

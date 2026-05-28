@@ -71,8 +71,8 @@ static const int DX[4] = { 0, 1, 0,-1};
 static const int DY[4] = {-1, 0, 1, 0};
 
 /* ---- ANSI helpers ------------------------------------------------------ */
-#define CLR()    fputs("\033[2J\033[H",stdout)
-#define HIDE()   fputs("\033[?25l",   stdout)
+#define CLR()    fputs("\033[H",           stdout)   /* home only — no flash */
+#define HIDE()   fputs("\033[?25l\033[2J\033[H",stdout) /* hide + one-time clear */
 #define SHOW()   fputs("\033[?25h",   stdout)
 #define GRN      "\033[32m"
 #define BGRN     "\033[92m"
@@ -217,7 +217,7 @@ static void draw(const Snake *s, int gen, int best_all, float best_fit)
     grid[s->by[0]][s->bx[0]] = '@';
 
     CLR();
-    printf(BLD "  Nerve Snake AI" RST "  generation %d\n\n", gen);
+    printf(BLD "  Nerve Snake AI" RST "  generation %d\033[K\n\n", gen);
 
     printf("  " CYN "+");
     for (c = 0; c < BW; c++) printf("--");
@@ -240,13 +240,13 @@ static void draw(const Snake *s, int gen, int best_all, float best_fit)
         case 7: printf("   Fitness: " YEL "%.0f" RST, best_fit); break;
         case 9: printf("   Length:  " YEL "%d" RST, s->len);     break;
         }
-        printf("\n");
+        printf("\033[K\n");
     }
 
     printf("  " CYN "+");
     for (c = 0; c < BW; c++) printf("--");
     printf("+" RST "\n\n");
-    printf(DIM "  Net: %d->%d->%d  |  Pop: %d  |  Elite: %d  |  Ctrl+C to exit\n" RST,
+    printf(DIM "  Net: %d->%d->%d  |  Pop: %d  |  Elite: %d  |  Ctrl+C to exit\033[K\n" RST,
            N_IN, N_HID, N_OUT, POP, ELITE);
     fflush(stdout);
 }
