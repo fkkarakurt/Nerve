@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # ── Linux ──────────────────────────────────────────────────────────────────
+  linux:
+    name: GCC / Linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build all examples
+        run: |
+          set -e
+          for f in examples/0[1-9]_*.c examples/1[0-2]_*.c; do
+            printf "  build %-45s" "$f"
+            gcc -O2 -Wall -Wextra -std=c99 -pedantic "$f" -o /tmp/nerve_ex -lm
+            echo "OK"
+          done
+
+      - name: XOR convergence smoke test
+        run: |
+          gcc -O2 -std=c99 examples/01_xor.c -o /tmp/xor -lm
+          result=$(/tmp/xor)
+          echo "$result"
+          count=$(echo "$result" | grep -c "OK")
+          [ "$count" -eq 4 ] && echo "XOR: all 4 gates correct" || (echo "FAIL"; exit 1)
+
+  # ── macOS ──────────────────────────────────────────────────────────────────
+  macos:
+    name: GCC / macOS
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install gcc
+        run: brew install gcc
+
+      - name: Build all examples
+        run: |
+          set -e
+          # use Homebrew gcc, not Apple clang
+          GCC=$(ls /usr/local/bin/gcc-* 2>/dev/null | head -1 || ls /opt/homebrew/bin/gcc-* 2>/dev/null | head -1 || echo gcc)
+          for f in examples/0[1-9]_*.c examples/1[0-2]_*.c; do
+            printf "  build %-45s" "$f"
+            $GCC -O2 -Wall -std=c99 "$f" -o /tmp/nerve_ex -lm
+            echo "OK"
+          done
+
+  # ── Windows ────────────────────────────────────────────────────────────────
+  windows:
+    name: GCC / Windows (MSYS2)
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: mingw-w64-x86_64-gcc
+
+      - name: Build all examples
+        run: |
+          set -e
+          for f in examples/0[1-9]_*.c examples/1[0-2]_*.c; do
+            printf "  build %-45s" "$f"
+            gcc -O2 -Wall -std=c99 "$f" -o /tmp/nerve_ex.exe -lm
+            echo "OK"
+          done
+
+      - name: XOR convergence smoke test
+        run: |
+          gcc -O2 -std=c99 examples/01_xor.c -o /tmp/xor.exe -lm
+          result=$(/tmp/xor.exe)
+          echo "$result"
+          count=$(echo "$result" | grep -c "OK")
+          [ "$count" -eq 4 ] && echo "XOR: all 4 gates correct" || (echo "FAIL"; exit 1)

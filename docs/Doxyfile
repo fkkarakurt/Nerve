@@ -1,7 +1,7 @@
 # Doxyfile — Nerve Neural Network Library
 # Generate: doxygen docs/Doxyfile
-# Output:   docs/output/html/index.html   (browser)
-#           docs/output/latex/refman.pdf  (pdflatex docs/output/latex/Makefile)
+# Output:   docs/doxygen/html/index.html   (browser)
+#           docs/doxygen/latex/refman.pdf (pdflatex docs/doxygen/latex/Makefile)  (pdflatex docs/output/latex/Makefile)
 
 # ---------------------------------------------------------------------------
 # Project identity
@@ -9,7 +9,7 @@
 PROJECT_NAME           = "Nerve"
 PROJECT_NUMBER         = 2.0.0
 PROJECT_BRIEF          = "Zero-dependency multilayer perceptron in ANSI C"
-OUTPUT_DIRECTORY       = docs/output
+OUTPUT_DIRECTORY       = docs/doxygen
 
 # ---------------------------------------------------------------------------
 # Input sources

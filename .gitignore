@@ -91,11 +91,22 @@ _build/
 cmake-build-*/
 out/
 
-# -- Doxygen generated documentation --------------------------------------------
-docs/output/
-docs/html/
-docs/latex/
-docs/*.tmp
+# -- Doxygen generated output (not source) -------------------------------------
+docs/doxygen/
+
+# -- LaTeX compiled artifacts (source .tex files ARE tracked) ------------------
+docs/latex/*.aux
+docs/latex/*.log
+docs/latex/*.out
+docs/latex/*.toc
+docs/latex/*.lof
+docs/latex/*.lot
+docs/latex/*.bbl
+docs/latex/*.blg
+docs/latex/*.fdb_latexmk
+docs/latex/*.fls
+docs/latex/*.synctex.gz
+docs/latex/*.pdf
 
 # -- OCR training data (large binaries -- download separately) ------------------
 trainingData/optdigits.training/
