@@ -2,7 +2,7 @@
 
 # Nerve
 
-<img src="assets/nerve-flappy-ai.gif" width="720" alt="Flappy Bird AI learning in real-time via neuroevolution" />
+<img src="assets/nerve-flappy.gif" width="720" alt="Flappy Bird AI learning in real-time via neuroevolution" />
 
 **Zero-dependency neural network library in pure C**
 
