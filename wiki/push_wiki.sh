@@ -17,6 +17,7 @@ cp "$WIKI_DIR/Getting-Started.md" "$TMP_DIR/Getting-Started.md"
 cp "$WIKI_DIR/Core-API.md"        "$TMP_DIR/Core-API.md"
 cp "$WIKI_DIR/Easy-API.md"        "$TMP_DIR/Easy-API.md"
 cp "$WIKI_DIR/Algorithms.md"      "$TMP_DIR/Algorithms.md"
+cp "$WIKI_DIR/_Footer.md"         "$TMP_DIR/_Footer.md"
 
 echo "Removing stale pages..."
 rm -f "$TMP_DIR/Description.md"
