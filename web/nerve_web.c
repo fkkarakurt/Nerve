@@ -39,6 +39,22 @@ int nerve_web_init(void)
 EMSCRIPTEN_KEEPALIVE
 int nerve_web_ctx(void) { return g_ready ? g_model.config.seq_len : 0; }
 
+EMSCRIPTEN_KEEPALIVE
+int nerve_web_dim(void) { return g_ready ? g_model.config.dim : 0; }
+
+/* Encode text -> the model's final hidden state (dim floats). Returns a pointer
+ * into the engine's buffer (valid until the next call); JS copies it out. This
+ * is the feature the in-browser "teach" demo trains a tiny head on. */
+EMSCRIPTEN_KEEPALIVE
+float *nerve_web_embed(const char *text)
+{
+    int toks[1024], n, p;
+    if (!g_ready) return 0;
+    n = nerve_tokenizer_encode(&g_tok, text, 1, 0, toks);
+    for (p = 0; p < n; p++) nerve_infer_forward(&g_model, toks[p], p);
+    return nerve_infer_hidden(&g_model);
+}
+
 /* Generate from a prompt; each token fragment is streamed via Module.onPiece. */
 EMSCRIPTEN_KEEPALIVE
 void nerve_web_generate(const char *prompt, int steps, float temp, float topp, int seed)
