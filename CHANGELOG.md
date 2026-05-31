@@ -1,8 +1,5 @@
 # Changelog
 
-All notable changes to **Nerve** are recorded here.
-Format follows [Keep a Changelog](https://keepachangelog.com/); versioning is
-[Semantic Versioning](https://semver.org/).
 
 ---
 
