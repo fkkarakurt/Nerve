@@ -84,12 +84,26 @@ import Nerve from "@fkkarakurt/nerve";
 
 const nerve = await Nerve.load();
 
+// 1. generate text (streams token by token)
 nerve.generate("Once upon a time", { onToken: t => process.stdout.write(t) });
+
+// 2. meaning similarity (cosine, -1..1)
 nerve.similarity("a puppy on the grass", "a young dog in the park"); // ~0.5
-nerve.teach([{ text: "i want a hamburger", label: "food" }, /* … */]);
-nerve.classify("i want a cola");        // { label: "food", confidence: 0.69, … }
-nerve.index(notes);
-nerve.search("what keeps me awake?");   // semantic search over your own notes
+
+// 3. learn your own categories, then classify
+nerve.teach([
+  { text: "schedule a meeting tomorrow", label: "calendar" },
+  { text: "i want to eat a hamburger",   label: "food" },
+  { text: "go for a run in the park",    label: "fitness" },
+]);
+console.log(nerve.classify("i want a cola")); // { label: "food", confidence: 0.7, ... }
+
+// 4. semantic search over your own notes — index() first, then search()
+nerve.index([
+  "The capital of France is Paris.",
+  "Coffee contains caffeine, a stimulant.",
+]);
+console.log(nerve.search("what keeps me awake?")); // [{ text: "Coffee contains...", score }]
 ```
 
 > **Try it live in your browser** — text generation, on-device learning, semantic
