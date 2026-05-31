@@ -100,6 +100,23 @@
     <div class="bars" id="simbar"></div>
   </div>
 
+  <!-- 5. DRAW -->
+  <h2>05 — vision</h2>
+  <p class="lead">Draw a digit — it <i>recognises</i> it</p>
+  <p class="hint">A 784-128-10 network Nerve trained on MNIST (~97% test accuracy). Draw a number 0–9; it reads your strokes, live, on your device.</p>
+  <div class="card">
+    <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start;">
+      <div>
+        <canvas id="pad" width="280" height="280" style="background:#000;border:1px solid var(--line);border-radius:12px;touch-action:none;cursor:crosshair;"></canvas>
+        <div class="row"><button id="clr">Clear</button><span class="status" id="dstatus">draw a digit…</span></div>
+      </div>
+      <div style="flex:1;min-width:220px;">
+        <div style="font-size:64px;font-weight:800;line-height:1" id="dguess">–</div>
+        <div class="bars" id="dbars"></div>
+      </div>
+    </div>
+  </div>
+
   <p class="foot"><b>Nerve</b> — single-header, zero-dependency neural nets in pure C, compiled to WebAssembly.
     Two models (~38&nbsp;MB total) load once; everything then runs offline, on your hardware, with your data.<br>
     Open your network tab — after loading it stays silent.</p>
@@ -189,6 +206,47 @@
 
   function doCompare(){if(!M)return;var a=embed($("sa").value),b=embed($("sb").value),s=dot(a,b);var pct=Math.max(0,s)*100;
     $("simbar").innerHTML='<div class="bar"><span class="nm">similarity</span><span class="track"><span class="fill" style="width:'+pct.toFixed(0)+'%"></span></span><span class="pct mono">'+pct.toFixed(0)+'%</span></div>';}
+
+  // ---- MNIST digit pad (Nerve-trained weights, forward in JS) ----
+  var mW1,mb1,mW2,mb2,mNIN=784,mNHID=128,mNOUT=10,mReady=false;
+  fetch("mnist_mlp.bin").then(function(r){return r.ok?r.arrayBuffer():Promise.reject(0);}).then(function(buf){
+    var dv=new DataView(buf);mNIN=dv.getInt32(0,true);mNHID=dv.getInt32(4,true);mNOUT=dv.getInt32(8,true);
+    var f=new Float32Array(buf,12),o=0;
+    mW1=f.subarray(o,o+mNHID*mNIN);o+=mNHID*mNIN; mb1=f.subarray(o,o+mNHID);o+=mNHID;
+    mW2=f.subarray(o,o+mNOUT*mNHID);o+=mNOUT*mNHID; mb2=f.subarray(o,o+mNOUT);
+    mReady=true; $("dstatus").textContent="ready — draw a digit";
+  }).catch(function(){$("dstatus").textContent="digit model still training…";});
+
+  var pad=$("pad"),pctx=pad.getContext("2d"),drawing=false;
+  function pos(e){var r=pad.getBoundingClientRect(),t=e.touches?e.touches[0]:e;return {x:(t.clientX-r.left)*280/r.width,y:(t.clientY-r.top)*280/r.height};}
+  function dStart(e){drawing=true;pctx.strokeStyle="#fff";pctx.lineWidth=22;pctx.lineCap="round";pctx.lineJoin="round";var p=pos(e);pctx.beginPath();pctx.moveTo(p.x,p.y);e.preventDefault();}
+  function dMove(e){if(!drawing)return;var p=pos(e);pctx.lineTo(p.x,p.y);pctx.stroke();e.preventDefault();}
+  function dEnd(){if(drawing){drawing=false;predictDigit();}}
+  pad.addEventListener("mousedown",dStart);pad.addEventListener("mousemove",dMove);window.addEventListener("mouseup",dEnd);
+  pad.addEventListener("touchstart",dStart);pad.addEventListener("touchmove",dMove);pad.addEventListener("touchend",dEnd);
+  $("clr").onclick=function(){pctx.clearRect(0,0,280,280);$("dguess").textContent="–";$("dbars").innerHTML="";};
+
+  function predictDigit(){
+    if(!mReady){return;}
+    var img=pctx.getImageData(0,0,280,280).data,minx=280,miny=280,maxx=0,maxy=0,x,y,i,j,k,s;
+    for(y=0;y<280;y++)for(x=0;x<280;x++){if(img[(y*280+x)*4+3]>40){if(x<minx)minx=x;if(x>maxx)maxx=x;if(y<miny)miny=y;if(y>maxy)maxy=y;}}
+    if(maxx<minx){return;}
+    var bw=maxx-minx+1,bh=maxy-miny+1,sz=Math.max(bw,bh),scale=20/sz,dw=bw*scale,dh=bh*scale;
+    var off=document.createElement("canvas");off.width=28;off.height=28;var oc=off.getContext("2d");
+    oc.fillStyle="#000";oc.fillRect(0,0,28,28);
+    oc.drawImage(pad,minx,miny,bw,bh,(28-dw)/2,(28-dh)/2,dw,dh);
+    var od=oc.getImageData(0,0,28,28).data,px=new Float32Array(784);
+    for(i=0;i<784;i++)px[i]=od[i*4]/255;                     /* white-on-black intensity */
+    var h=new Float32Array(mNHID);
+    for(j=0;j<mNHID;j++){s=mb1[j];for(i=0;i<784;i++)s+=mW1[j*784+i]*px[i];h[j]=s>0?s:0;}
+    var lo=new Float32Array(10);for(k=0;k<10;k++){s=mb2[k];for(j=0;j<mNHID;j++)s+=mW2[k*mNHID+j]*h[j];lo[k]=s;}
+    var mx=-1e9;for(k=0;k<10;k++)if(lo[k]>mx)mx=lo[k];var sum=0,pr=new Float32Array(10);
+    for(k=0;k<10;k++){pr[k]=Math.exp(lo[k]-mx);sum+=pr[k];}for(k=0;k<10;k++)pr[k]/=sum;
+    var best=0;for(k=1;k<10;k++)if(pr[k]>pr[best])best=k;
+    $("dguess").textContent=best;
+    var bars="";for(k=0;k<10;k++)bars+='<div class="bar"><span class="nm">'+k+'</span><span class="track"><span class="fill" style="width:'+(pr[k]*100).toFixed(0)+'%"></span></span><span class="pct mono">'+(pr[k]*100).toFixed(0)+'%</span></div>';
+    $("dbars").innerHTML=bars;
+  }
 
   if(typeof createNerve!=="function"){setBoot("nerve.js failed to load",true);}
   else{setBoot("loading models (~38 MB)…");
