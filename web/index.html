@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nerve — a language model in your browser</title>
+<style>
+  :root { --bg:#0d1117; --fg:#e6edf3; --mut:#8b949e; --acc:#7ee787; --card:#161b22; --line:#30363d; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+         font:16px/1.6 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+         display:flex; min-height:100vh; align-items:center; justify-content:center; padding:24px; }
+  .wrap { width:100%; max-width:720px; }
+  h1 { margin:0 0 4px; font-size:28px; }
+  h1 .dot { color:var(--acc); }
+  .sub { color:var(--mut); margin:0 0 20px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; }
+  textarea { width:100%; min-height:64px; resize:vertical; background:#0d1117; color:var(--fg);
+             border:1px solid var(--line); border-radius:8px; padding:10px; font-size:15px; }
+  .row { display:flex; gap:12px; align-items:center; margin:12px 0; flex-wrap:wrap; }
+  label { color:var(--mut); font-size:13px; }
+  input[type=range] { vertical-align:middle; }
+  button { background:var(--acc); color:#04260f; border:0; border-radius:8px; padding:10px 18px;
+           font-size:15px; font-weight:600; cursor:pointer; }
+  button:disabled { background:#21262d; color:var(--mut); cursor:default; }
+  #out { white-space:pre-wrap; margin-top:14px; min-height:120px; background:#0d1117;
+         border:1px solid var(--line); border-radius:8px; padding:12px; }
+  .foot { color:var(--mut); font-size:13px; margin-top:18px; text-align:center; }
+  .badge { color:var(--acc); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Nerve<span class="dot">.</span></h1>
+  <p class="sub">A real language model running <b>entirely in your browser</b> —
+     no server, no GPU, no data leaving this page. ~15&nbsp;MB, loaded once.</p>
+
+  <div class="card">
+    <textarea id="prompt">Once upon a time</textarea>
+    <div class="row">
+      <label>length <span id="lenv">200</span></label>
+      <input id="len" type="range" min="20" max="256" value="200">
+      <label>creativity <span id="tv">0.8</span></label>
+      <input id="temp" type="range" min="0" max="120" value="80">
+      <button id="go" disabled>Loading model…</button>
+    </div>
+    <div id="out"></div>
+  </div>
+
+  <p class="foot">Powered by <span class="badge">Nerve</span> — a single-header,
+     zero-dependency neural-network engine in pure C, compiled to WebAssembly.</p>
+</div>
+
+<script>
+  var outEl, goEl, promptEl, lenEl, tempEl, buf = "";
+  function $(id){ return document.getElementById(id); }
+  window.addEventListener("DOMContentLoaded", function(){
+    outEl=$("out"); goEl=$("go"); promptEl=$("prompt"); lenEl=$("len"); tempEl=$("temp");
+    lenEl.oninput  = function(){ $("lenv").textContent = lenEl.value; };
+    tempEl.oninput = function(){ $("tv").textContent = (tempEl.value/100).toFixed(2); };
+    goEl.onclick = run;
+  });
+
+  function run(){
+    buf=""; outEl.textContent="";
+    goEl.disabled=true; goEl.textContent="generating…";
+    // defer so the UI repaints before the (synchronous) wasm call
+    setTimeout(function(){
+      var temp = parseInt(tempEl.value,10)/100;
+      Module.ccall("nerve_web_generate","null",
+        ["string","number","number","number","number"],
+        [promptEl.value, parseInt(lenEl.value,10), temp, 0.9, (Math.random()*1e9)|0]);
+      goEl.disabled=false; goEl.textContent="Generate";
+    }, 30);
+  }
+
+  var Module = {
+    onPiece: function(s){ buf += s; outEl.textContent = buf; },
+    onRuntimeInitialized: function(){
+      var rc = Module.ccall("nerve_web_init","number",[],[]);
+      if (rc !== 0){ goEl.textContent = "load error ("+rc+")"; return; }
+      goEl.disabled=false; goEl.textContent="Generate";
+    }
+  };
+</script>
+<script src="nerve.js"></script>
+</body>
+</html>
