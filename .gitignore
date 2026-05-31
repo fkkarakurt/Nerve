@@ -129,6 +129,10 @@ docs/latex/*.fls
 docs/latex/*.synctex.gz
 docs/latex/*.pdf
 
+web
+site
+*.html
+
 # -- OCR training data (large binaries -- download separately) ------------------
 trainingData/optdigits.training/
 trainingData/optdigits.validation/
