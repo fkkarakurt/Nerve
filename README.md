@@ -4,9 +4,10 @@
 
 <img src="assets/nerve-flappy.gif" width="720" alt="Flappy Bird AI learning in real-time via neuroevolution" />
 
-**Zero-dependency neural network library in pure C**
+**The modern AI stack — in pure C you can read.**
 
-*Copy one file. Compile. Train.*
+*A real Transformer, on-device learning, and sentence embeddings.
+Zero dependencies. One header. Runs from a microcontroller to a browser tab.*
 
 [![CI](https://github.com/fkkarakurt/nerve/actions/workflows/ci.yml/badge.svg)](https://github.com/fkkarakurt/nerve/actions/workflows/ci.yml)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](LICENSE)
@@ -14,6 +15,7 @@
 [![Single Header](https://img.shields.io/badge/integration-single%20header-purple.svg)](nerve.h)
 [![Zero Deps](https://img.shields.io/badge/dependencies-none-brightgreen.svg)]()
 [![Version](https://img.shields.io/badge/version-2.1.0-informational.svg)]()
+[![npm](https://img.shields.io/npm/v/@fkkarakurt/nerve?color=cb3837&logo=npm&label=npm)](https://www.npmjs.com/package/@fkkarakurt/nerve)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-ff69b4.svg)](https://github.com/fkkarakurt/nerve/pulls)
 
 [![Platforms](https://img.shields.io/badge/platforms-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20embedded-lightgrey.svg)]()
@@ -54,7 +56,7 @@ runtime, no cloud, no per-token bill.
 |---------|-----|-------|
 | **Run a real 1.1B-parameter LLM** | decoder Transformer (RMSNorm, RoPE, GQA + KV-cache, SwiGLU, int8) in one header | TinyLlama-1.1B generates coherent text at ~3 tok/s on a laptop CPU — `studies/infer` |
 | **Learn from *you*, on-device** | a frozen model's features + a tiny head trained with Nerve's own autodiff | personalises to your categories in ~40 ms, privately — `studies/infer/learn.c` |
-| **Understand meaning** | a MiniLM BERT-style sentence encoder (int8, ~22 MB) | `cola → food`, `running shoes → fitness`; semantic search by meaning — `studies/embed` |
+| **Understand meaning** | a MiniLM BERT-style sentence encoder (int8, ~22 MB) | `hamburger → food`, `running shoes → fitness`; semantic search by meaning — `studies/embed` |
 | **Recognise handwriting** | the 784-128-10 MLP trained on MNIST | ~97% test accuracy — `studies/mnist` |
 | **Run in your browser** | the same C compiled to a **65 KB** WebAssembly module | generate · teach · search · draw a digit — all client-side, nothing leaves the page — `web/` |
 | **Differentiate anything** | tape-based reverse-mode autodiff in ~200 lines | define a layer without hand-deriving its gradient — `studies/autograd` |
@@ -63,6 +65,36 @@ Every capability ships with a runnable proof, and every algorithm is grounded
 in its paper — see [`docs/REFERENCES.md`](docs/REFERENCES.md). Nerve does not try
 to out-scale the giants; it earns its place by being the most **readable,
 portable, reproducible** implementation of the same ideas.
+
+---
+
+## Use it from JavaScript / TypeScript
+
+The same engine, compiled to WebAssembly, ships on npm — for the browser or Node.
+No server, no GPU, no API key; it runs on the user's machine.
+
+[![npm](https://img.shields.io/npm/v/@fkkarakurt/nerve?color=cb3837&logo=npm&label=npm)](https://www.npmjs.com/package/@fkkarakurt/nerve)
+
+```sh
+npm install @fkkarakurt/nerve
+```
+
+```js
+import Nerve from "@fkkarakurt/nerve";
+
+const nerve = await Nerve.load();
+
+nerve.generate("Once upon a time", { onToken: t => process.stdout.write(t) });
+nerve.similarity("a puppy on the grass", "a young dog in the park"); // ~0.5
+nerve.teach([{ text: "i want a hamburger", label: "food" }, /* … */]);
+nerve.classify("i want a cola");        // { label: "food", confidence: 0.69, … }
+nerve.index(notes);
+nerve.search("what keeps me awake?");   // semantic search over your own notes
+```
+
+> **Try it live in your browser** — text generation, on-device learning, semantic
+> search and handwritten-digit recognition, all client-side: *(demo link coming
+> with the docs site)*.
 
 ---
 

@@ -140,6 +140,9 @@ studies/mnist/data/*-ubyte
 studies/mnist/data/*.gz
 run_log.txt
 
+# -- Internal / not-public ------------------------------------------------------
+ROADMAP.md
+
 # -- Obsolete assets ------------------------------------------------------------
 structure.png
 
