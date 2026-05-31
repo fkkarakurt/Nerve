@@ -86,6 +86,10 @@ behaviour unchanged.
   giants structurally can't follow. (First rung: frozen-backbone / linear-probe
   personalization. Next: LoRA / adapters that change the generative model's
   behavior, then federated sharing of those adapters.)
+- `search.c` — local **semantic search**: mean-pooled, mean-centered embeddings
+  matched by cosine similarity. Queries worded completely differently from the
+  notes still retrieve the right one (6/6 on the demo set) — meaning, not
+  keywords. Private, offline "ask your own notes" with no embeddings API.
 - Strategic direction: Nerve's flagship lane is private, on-device, owned
   inference of small models — the niche the big engines (llama.cpp/ggml) can't
   reach on embeddability, auditability and portability.
@@ -108,6 +112,13 @@ behaviour unchanged.
   roughly flat (the int8→float conversion offsets the bandwidth saving); the
   speed win appears as models grow past cache. The size cut is the real enabler:
   useful-sized models fit in the limited RAM of ordinary/old hardware.
+
+### Runs in the browser (WebAssembly)
+- `web/` — the same engine compiled to WebAssembly (`nerve.wasm` is ~65 KB),
+  running a real model **entirely in the browser**: click a link, type, watch it
+  generate. No server, no GPU, no data leaving the page. The small int8 stories
+  model (~15 MB) is preloaded; the engine source is reused unchanged. Modular,
+  ready to graduate into its own repo / GitHub Pages.
 
 ### Roadmap Phase 2 spike (training prototype — not shipped in the core yet)
 - `studies/autograd/nerve_grad.h` — a minimal, single-header, ~200-line

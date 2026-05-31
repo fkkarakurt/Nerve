@@ -16,6 +16,7 @@ project; everything here builds with `cc file.c -lm`.
 | `nerve_infer.h` | The inference engine: RMSNorm, RoPE, causal multi-head attention (GQA) + KV cache, SwiGLU, int8 weights, temperature/top-p sampling, BPE tokenizer. Single header. |
 | `generate.c` | Text generation demo. |
 | `learn.c` | **On-device learning**: uses a frozen base model as a feature extractor and trains a tiny head (with `../autograd/nerve_grad.h`) on your own labelled sentences. |
+| `search.c` | **Local semantic search**: turns notes into embeddings and matches a query by *meaning* (cosine similarity, mean-centered), fully on-device — the core of "ask your own notes" / local RAG. |
 | `convert.c` | Import a flat float32 checkpoint + SentencePiece vocab into Nerve's native `.nrv` / `.tok`. |
 | `convert_hf.py` | Build-time tool: import a Hugging Face Llama-architecture model (safetensors) into int8 `.nrv`. Pure numpy + stdlib (no torch). Handles bf16, GQA, and the HF→interleaved RoPE un-permutation. |
 | `quantize.c` | Convert a float32 `.nrv` to a 4×-smaller int8 `.nrv` (per-row symmetric). |
@@ -52,6 +53,18 @@ NERVE_MODEL=tinyllama_q8.nrv ./learn
 The frozen base model turns each sentence into a feature vector; a tiny linear
 head, trained with Nerve's own autodiff on a handful of *your* examples, learns
 *your* categories — in seconds, on the CPU, with no data leaving the machine.
+
+## Local semantic search
+
+```sh
+gcc -O3 -march=native -funroll-loops search.c -o search -lm
+NERVE_MODEL=tinyllama_q8.nrv ./search            # built-in demo queries
+echo "how do plants make food?" | NERVE_MODEL=tinyllama_q8.nrv ./search -i
+```
+Matches a query to the closest notes by *meaning*, not keywords — queries
+worded completely differently from the notes still find the right one. The core
+of private, offline "ask your own notes" with no embeddings API and no per-call
+bill.
 
 ## Native formats
 
