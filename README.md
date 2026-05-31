@@ -13,7 +13,7 @@
 [![Language](https://img.shields.io/badge/Language-C99-orange.svg)](nerve.h)
 [![Single Header](https://img.shields.io/badge/integration-single%20header-purple.svg)](nerve.h)
 [![Zero Deps](https://img.shields.io/badge/dependencies-none-brightgreen.svg)]()
-[![Version](https://img.shields.io/badge/version-2.0.0-informational.svg)]()
+[![Version](https://img.shields.io/badge/version-2.1.0-informational.svg)]()
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-ff69b4.svg)](https://github.com/fkkarakurt/nerve/pulls)
 
 [![Platforms](https://img.shields.io/badge/platforms-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20embedded-lightgrey.svg)]()

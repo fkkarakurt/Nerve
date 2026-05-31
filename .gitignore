@@ -27,6 +27,12 @@ generate_sigma
 *.net
 *.bin
 
+# -- Inference model artifacts (large; converted/downloaded, not source) --------
+*.nrv
+*.tok
+*.safetensors
+studies/infer/tinyllama_config.json
+
 # -- Python ---------------------------------------------------------------------
 __pycache__/
 *.pyc
@@ -113,6 +119,11 @@ trainingData/optdigits.training/
 trainingData/optdigits.validation/
 trainingData/optdigits.wdependent/
 trainingData/optdigits.windependent/
+
+# -- MNIST IDX data (large binaries -- fetch with studies/mnist/download_data) --
+studies/mnist/data/*-ubyte
+studies/mnist/data/*.gz
+run_log.txt
 
 # -- Obsolete assets ------------------------------------------------------------
 structure.png

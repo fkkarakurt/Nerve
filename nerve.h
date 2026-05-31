@@ -89,9 +89,9 @@
 
 /* ── Version ──────────────────────────────────────────────────────────── */
 #define NERVENET_VERSION_MAJOR 2
-#define NERVENET_VERSION_MINOR 0
+#define NERVENET_VERSION_MINOR 1
 #define NERVENET_VERSION_PATCH 0
-#define NERVENET_VERSION       "2.0.0"
+#define NERVENET_VERSION       "2.1.0"
 
 /* ── Defaults ─────────────────────────────────────────────────────────── */
 #define NERVENET_DEFAULT_MOMENTUM      0.1f
@@ -110,8 +110,15 @@ typedef enum
     NERVENET_ACTIVATION_SIGMOID    = 0,
     NERVENET_ACTIVATION_TANH       = 1,
     NERVENET_ACTIVATION_RELU       = 2,
-    NERVENET_ACTIVATION_LEAKY_RELU = 3
+    NERVENET_ACTIVATION_LEAKY_RELU = 3,
+    NERVENET_ACTIVATION_SOFTMAX    = 4   /* output layer only */
 } nervenet_activation_t;
+
+typedef enum
+{
+    NERVENET_LOSS_MSE           = 0,   /* mean squared error (default)        */
+    NERVENET_LOSS_CROSS_ENTROPY = 1    /* categorical cross-entropy           */
+} nervenet_loss_t;
 
 typedef enum
 {
@@ -162,7 +169,9 @@ typedef struct network_s
     layer_t *input_layer;
     layer_t *output_layer;
 
-    int     activation;
+    int     activation;        /* hidden-layer activation                    */
+    int     output_activation; /* output-layer activation (sigmoid/softmax/…)*/
+    int     loss;              /* nervenet_loss_t: MSE or cross-entropy       */
     int     optimizer;
     float   l2_lambda;
     float   dropout_rate;   /* fraction of hidden neurons dropped per step */
@@ -196,6 +205,9 @@ void  net_set_momentum(network_t *net, float momentum);
 void  net_set_learning_rate(network_t *net, float learning_rate);
 void  net_use_bias(network_t *net, int use_bias);
 void  net_set_activation(network_t *net, nervenet_activation_t act);
+void  net_set_output_activation(network_t *net, nervenet_activation_t act);
+void  net_set_loss(network_t *net, nervenet_loss_t loss);
+void  net_set_classification(network_t *net); /* softmax + cross-entropy combo */
 void  net_set_optimizer(network_t *net, nervenet_optimizer_t opt);
 void  net_set_l2_lambda(network_t *net, float lambda);
 void  net_set_dropout(network_t *net, float rate);
@@ -455,7 +467,9 @@ network_t *net_allocate_l(int no_of_layers, const int *arglist)
     net->learning_rate = NERVENET_DEFAULT_LEARNING_RATE;
     net->global_error  = 0.0f;
     net->no_of_patterns = 0;
-    net->activation    = NERVENET_ACTIVATION_SIGMOID;
+    net->activation        = NERVENET_ACTIVATION_SIGMOID;
+    net->output_activation = NERVENET_ACTIVATION_SIGMOID;
+    net->loss              = NERVENET_LOSS_MSE;
     net->optimizer     = NERVENET_OPTIMIZER_SGD;
     net->l2_lambda     = 0.0f;
     net->dropout_rate  = 0.0f;
@@ -580,6 +594,21 @@ void net_set_learning_rate(network_t *net, float v)
 
 void net_set_activation(network_t *net, nervenet_activation_t a)
 { assert(net != NULL); net->activation = (int)a; }
+
+void net_set_output_activation(network_t *net, nervenet_activation_t a)
+{ assert(net != NULL); net->output_activation = (int)a; }
+
+void net_set_loss(network_t *net, nervenet_loss_t loss)
+{ assert(net != NULL); net->loss = (int)loss; }
+
+/* Convenience: configure the network for multi-class classification —
+ * softmax output + cross-entropy loss, the standard pairing. */
+void net_set_classification(network_t *net)
+{
+    assert(net != NULL);
+    net->output_activation = NERVENET_ACTIVATION_SOFTMAX;
+    net->loss              = NERVENET_LOSS_CROSS_ENTROPY;
+}
 
 void net_set_l2_lambda(network_t *net, float v)
 { assert(net && v >= 0.0f); net->l2_lambda = v; }
@@ -808,6 +837,47 @@ static void nerve__propagate(layer_t *lower, layer_t *upper, int act,
     }
 }
 
+/* Output layer forward pass. For softmax the whole layer is normalised
+ * together, so it cannot go through the per-neuron nerve__propagate path;
+ * every other activation does. */
+static void nerve__forward_output(network_t *net)
+{
+    layer_t *lower = &net->layer[net->no_of_layers - 2];
+    layer_t *out   = net->output_layer;
+    int nu, nl;
+    float v;
+
+    if (net->output_activation != NERVENET_ACTIVATION_SOFTMAX)
+    {
+        nerve__propagate(lower, out, net->output_activation, 0.0f);
+        return;
+    }
+
+    /* Softmax: raw logits, then exp/normalise with max-subtraction for
+     * numerical stability. */
+    {
+        float maxv, sum = 0.0f;
+        for (nu = 0; nu < out->no_of_neurons; nu++)
+        {
+            v = 0.0f;
+            for (nl = 0; nl <= lower->no_of_neurons; nl++)
+                v += out->neuron[nu].weight[nl] * lower->neuron[nl].output;
+            out->neuron[nu].output = v;
+        }
+        maxv = out->neuron[0].output;
+        for (nu = 1; nu < out->no_of_neurons; nu++)
+            if (out->neuron[nu].output > maxv) maxv = out->neuron[nu].output;
+        for (nu = 0; nu < out->no_of_neurons; nu++)
+        {
+            v = (float)exp((double)(out->neuron[nu].output - maxv));
+            out->neuron[nu].output = v;
+            sum += v;
+        }
+        for (nu = 0; nu < out->no_of_neurons; nu++)
+            out->neuron[nu].output /= sum;
+    }
+}
+
 static void nerve__forward(network_t *net, int training)
 {
     int l;
@@ -816,9 +886,7 @@ static void nerve__forward(network_t *net, int training)
         nerve__propagate(&net->layer[l - 1], &net->layer[l],
                          net->activation, drop);
     if (net->no_of_layers > 1)
-        nerve__propagate(&net->layer[net->no_of_layers - 2],
-                         &net->layer[net->no_of_layers - 1],
-                         NERVENET_ACTIVATION_SIGMOID, 0.0f);
+        nerve__forward_output(net);
 }
 
 void net_compute(network_t *net, const float *input, float *output)
@@ -833,14 +901,35 @@ void net_compute(network_t *net, const float *input, float *output)
 float net_compute_output_error(network_t *net, const float *target)
 {
     int n;
-    float y, e;
+    float y, e, t;
     assert(net && target);
     net->global_error = 0.0f;
+
+    if (net->loss == NERVENET_LOSS_CROSS_ENTROPY)
+    {
+        /* Cross-entropy. With a softmax (or sigmoid) output the gradient of
+         * the loss w.r.t. each logit collapses to the clean term (t - y),
+         * so the rest of the backward pass is unchanged. */
+        for (n = 0; n < net->output_layer->no_of_neurons; n++)
+        {
+            y = net->output_layer->neuron[n].output;
+            t = target[n];
+            net->output_layer->neuron[n].error = t - y;
+            if (t > 0.0f)
+                net->global_error -=
+                    t * (float)log((double)(y > 1e-12f ? y : 1e-12f));
+        }
+        return net->global_error;
+    }
+
+    /* Mean squared error. The output-layer delta carries the activation
+     * derivative; for the default sigmoid output this is exactly y*(1-y)*e. */
     for (n = 0; n < net->output_layer->no_of_neurons; n++)
     {
         y = net->output_layer->neuron[n].output;
         e = target[n] - y;
-        net->output_layer->neuron[n].error = y * (1.0f - y) * e;
+        net->output_layer->neuron[n].error =
+            nerve__activate_deriv(y, net->output_activation) * e;
         net->global_error += e * e;
     }
     net->global_error *= 0.5f;
@@ -926,15 +1015,7 @@ static void nerve__adjust(network_t *net)
 /* ── Online training ──────────────────────────────────────────────────── */
 static void nerve__forward_train(network_t *net)
 {
-    int l;
-    float drop = net->dropout_rate;
-    for (l = 1; l < net->no_of_layers - 1; l++)
-        nerve__propagate(&net->layer[l - 1], &net->layer[l],
-                         net->activation, drop);
-    if (net->no_of_layers > 1)
-        nerve__propagate(&net->layer[net->no_of_layers - 2],
-                         &net->layer[net->no_of_layers - 1],
-                         NERVENET_ACTIVATION_SIGMOID, 0.0f);
+    nerve__forward(net, 1);
 }
 
 void net_train(network_t *net)
@@ -1139,7 +1220,9 @@ network_t *net_copy(const network_t *net)
     n2->learning_rate  = net->learning_rate;
     n2->global_error   = net->global_error;
     n2->no_of_patterns = net->no_of_patterns;
-    n2->activation     = net->activation;
+    n2->activation        = net->activation;
+    n2->output_activation = net->output_activation;
+    n2->loss              = net->loss;
     n2->optimizer      = net->optimizer;
     n2->l2_lambda      = net->l2_lambda;
     n2->dropout_rate   = net->dropout_rate;
@@ -1196,6 +1279,7 @@ void net_add_neurons(network_t *net, int layer, int neuron, int number, float ra
         }
     n2->momentum = net->momentum; n2->learning_rate = net->learning_rate;
     n2->activation = net->activation; n2->optimizer = net->optimizer;
+    n2->output_activation = net->output_activation; n2->loss = net->loss;
     n2->l2_lambda = net->l2_lambda;
     tmp = (network_t *)malloc(sizeof(network_t));
     memcpy(tmp, n2, sizeof(network_t)); memcpy(n2, net, sizeof(network_t));
@@ -1224,6 +1308,7 @@ void net_remove_neurons(network_t *net, int layer, int neuron, int number)
         }
     n2->momentum = net->momentum; n2->learning_rate = net->learning_rate;
     n2->activation = net->activation; n2->optimizer = net->optimizer;
+    n2->output_activation = net->output_activation; n2->loss = net->loss;
     n2->l2_lambda = net->l2_lambda;
     tmp = (network_t *)malloc(sizeof(network_t));
     memcpy(tmp, n2, sizeof(network_t)); memcpy(n2, net, sizeof(network_t));
@@ -1325,7 +1410,9 @@ void nerve_fit_verbose(nerve_t *net, const float *X, const float *y,
     for (e = 1; e <= epochs; e++) {
         mse = net_train_epoch(net, X, y, n_samples, n_in, n_out, 1);
         if (print_every > 0 && e % print_every == 0)
-            printf("  epoch %5d / %d   MSE: %.6f\n", e, epochs, mse);
+            printf("  epoch %5d / %d   %s: %.6f\n", e, epochs,
+                   net->loss == NERVENET_LOSS_CROSS_ENTROPY ? "loss" : "MSE",
+                   mse);
     }
 }
 
