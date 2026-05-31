@@ -96,7 +96,7 @@ nerve.teach([
   { text: "i want to eat a hamburger",   label: "food" },
   { text: "go for a run in the park",    label: "fitness" },
 ]);
-console.log(nerve.classify("i want a cola")); // { label: "food", confidence: 0.7, ... }
+console.log(nerve.classify("i want a pizza")); // { label: "food", confidence: 0.7, ... }
 
 // 4. semantic search over your own notes — index() first, then search()
 nerve.index([
