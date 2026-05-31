@@ -133,9 +133,9 @@
   });
 
   var CATS=[
-    {name:"calendar",ex:"Schedule a meeting tomorrow morning\nMove my dentist appointment\nRemind me about the deadline Friday\nBlock two hours on my calendar"},
-    {name:"food",ex:"Add tomatoes to the shopping list\nHow long to roast the chicken\nWe are out of coffee and milk\nTry a new pasta recipe tonight"},
-    {name:"fitness",ex:"I went for a long run today\nMy legs are sore after the workout\nPlan a gym session\nA new personal best on the bench press"}
+    {name:"calendar",ex:"Schedule a meeting tomorrow morning\nMove my dentist appointment\nRemind me about the deadline on Friday\nBlock two hours on my calendar\nWhat time is my appointment\nBook a flight for Monday\nSet a reminder for the call\nWhen is the team standup"},
+    {name:"food",ex:"Add tomatoes to the shopping list\nHow long to roast the chicken\nWe are out of coffee and milk\nTry a new pasta recipe tonight\nI want to eat a hamburger\nWhat should I cook for dinner\nOrder some sushi tonight\nI am hungry for pizza"},
+    {name:"fitness",ex:"I went for a long run today\nMy legs are sore after the workout\nPlan a gym session\nA new personal best on the bench press\nLet us go for a jog in the park\nDo some push ups today\nStretch before the workout\nSign up for a yoga class"}
   ];
   $("cats").innerHTML=CATS.map(function(c,i){
     return '<div class="cat" id="cat'+i+'"><input type="text" value="'+c.name+'" id="cn'+i+'"><textarea id="ce'+i+'">'+c.ex+'</textarea></div>';
@@ -145,30 +145,39 @@
   function setBoot(s,err){var e=$("boot");e.textContent=s;e.className="boot"+(err?" err":"");}
 
   // ---------- embeddings + tiny head (all client-side) ----------
-  function embed(t){
+  function embed(t){           // raw mean-pooled vector (pooling done in WASM)
     var p=M.ccall("nerve_web_embed","number",["string"],[t]);
-    var v=M.HEAPF32.subarray(p>>2,(p>>2)+DIM),o=new Float32Array(DIM),n=0,i;
-    for(i=0;i<DIM;i++)n+=v[i]*v[i]; n=1/(Math.sqrt(n)+1e-8);
-    for(i=0;i<DIM;i++)o[i]=v[i]*n; return o;
+    var v=M.HEAPF32.subarray(p>>2,(p>>2)+DIM),o=new Float32Array(DIM),i;
+    for(i=0;i<DIM;i++)o[i]=v[i]; return o;
+  }
+  function cnorm(x,mu){        // subtract reference, then L2-normalise
+    var o=new Float32Array(DIM),n=0,i;
+    for(i=0;i<DIM;i++){o[i]=x[i]-mu[i];n+=o[i]*o[i];}
+    n=1/(Math.sqrt(n)+1e-8);
+    for(i=0;i<DIM;i++)o[i]*=n; return o;
   }
   function teach(){
-    var labels=[],X=[],y=[],i,j;
+    var labels=[],Xr=[],y=[],i,k,s,c,e;
     for(i=0;i<CATS.length;i++){
       labels.push($("cn"+i).value||("class "+i));
-      $("ce"+i).value.split("\n").forEach(function(s){s=s.trim();if(s){X.push(embed(s));y.push(i);}});
+      $("ce"+i).value.split("\n").forEach(function(t){t=t.trim();if(t){Xr.push(embed(t));y.push(i);}});
     }
-    var NC=labels.length,W=new Float32Array(DIM*NC),b=new Float32Array(NC),e,s,c,k,t0=performance.now();
+    var NC=labels.length, mu=new Float32Array(DIM);
+    for(s=0;s<Xr.length;s++)for(k=0;k<DIM;k++)mu[k]+=Xr[s][k];
+    for(k=0;k<DIM;k++)mu[k]/=Xr.length;
+    var X=Xr.map(function(x){return cnorm(x,mu);});
+    var W=new Float32Array(DIM*NC),b=new Float32Array(NC),t0=performance.now();
     for(e=0;e<400;e++)for(s=0;s<X.length;s++){
       var lo=new Float32Array(NC);for(c=0;c<NC;c++){var v=b[c];for(k=0;k<DIM;k++)v+=W[k*NC+c]*X[s][k];lo[c]=v;}
       var mx=-1e9;for(c=0;c<NC;c++)if(lo[c]>mx)mx=lo[c];var sum=0,pr=new Float32Array(NC);
       for(c=0;c<NC;c++){pr[c]=Math.exp(lo[c]-mx);sum+=pr[c];}for(c=0;c<NC;c++)pr[c]/=sum;
       for(c=0;c<NC;c++){var g=pr[c]-(c===y[s]?1:0);b[c]-=0.2*g;for(k=0;k<DIM;k++)W[k*NC+c]-=0.2*g*X[s][k];}
     }
-    head={W:W,b:b,NC:NC,labels:labels};
-    return {n:X.length,ms:Math.round(performance.now()-t0)};
+    head={W:W,b:b,NC:NC,labels:labels,mu:mu};
+    return {n:Xr.length,ms:Math.round(performance.now()-t0)};
   }
   function classify(t){
-    var x=embed(t),lo=new Float32Array(head.NC),c,k;
+    var x=cnorm(embed(t),head.mu),lo=new Float32Array(head.NC),c,k;
     for(c=0;c<head.NC;c++){var v=head.b[c];for(k=0;k<DIM;k++)v+=head.W[k*head.NC+c]*x[k];lo[c]=v;}
     var mx=-1e9;for(c=0;c<head.NC;c++)if(lo[c]>mx)mx=lo[c];var sum=0,pr=[];
     for(c=0;c<head.NC;c++){pr[c]=Math.exp(lo[c]-mx);sum+=pr[c];}for(c=0;c<head.NC;c++)pr[c]/=sum;

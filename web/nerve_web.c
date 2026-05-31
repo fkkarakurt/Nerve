@@ -45,14 +45,22 @@ int nerve_web_dim(void) { return g_ready ? g_model.config.dim : 0; }
 /* Encode text -> the model's final hidden state (dim floats). Returns a pointer
  * into the engine's buffer (valid until the next call); JS copies it out. This
  * is the feature the in-browser "teach" demo trains a tiny head on. */
+/* Mean-pooled sentence embedding (average of every token's final hidden state)
+ * — a far better whole-sentence representation than the last token alone. */
+static float g_embuf[8192];
 EMSCRIPTEN_KEEPALIVE
 float *nerve_web_embed(const char *text)
 {
-    int toks[1024], n, p;
+    int toks[1024], n, p, i, dim = g_model.config.dim;
     if (!g_ready) return 0;
     n = nerve_tokenizer_encode(&g_tok, text, 1, 0, toks);
-    for (p = 0; p < n; p++) nerve_infer_forward(&g_model, toks[p], p);
-    return nerve_infer_hidden(&g_model);
+    for (i = 0; i < dim; i++) g_embuf[i] = 0.0f;
+    for (p = 0; p < n; p++) {
+        float *h = (nerve_infer_forward(&g_model, toks[p], p), nerve_infer_hidden(&g_model));
+        for (i = 0; i < dim; i++) g_embuf[i] += h[i];
+    }
+    for (i = 0; i < dim; i++) g_embuf[i] /= (float)(n > 0 ? n : 1);
+    return g_embuf;
 }
 
 /* ---- streaming generation: one token per call, driven from JS so the page
