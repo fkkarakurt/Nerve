@@ -1,6 +1,6 @@
 {
   "name": "@fkkarakurt/nerve",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Run a real Transformer (text generation) and a MiniLM sentence-embedding model entirely in WebAssembly — browser or Node, no server, no GPU. Zero-dependency neural nets in pure C.",
   "type": "module",
   "main": "nerve.js",
@@ -9,7 +9,7 @@
   "exports": {
     ".": { "types": "./nerve.d.ts", "import": "./nerve.js" }
   },
-  "files": ["nerve.js", "nerve.d.ts", "nerve.mjs", "nerve.wasm", "nerve.data", "README.md"],
+  "files": ["nerve.js", "nerve.d.ts", "nerve.mjs", "nerve.wasm", "README.md"],
   "sideEffects": false,
   "keywords": [
     "ai", "llm", "transformer", "embeddings", "sentence-embeddings", "minilm",

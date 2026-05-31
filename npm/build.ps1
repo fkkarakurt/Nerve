@@ -15,10 +15,12 @@ Copy-Item ..\studies\infer\nerve.tok     . -Force
 Copy-Item ..\studies\embed\minilm_q8.nre . -Force
 Copy-Item ..\studies\embed\vocab.txt     . -Force
 $EF = "-sEXPORTED_FUNCTIONS=_nerve_web_init,_nerve_web_dim,_nerve_web_embed,_nerve_web_gen_start,_nerve_web_gen_step,_nerve_web_gen_done"
+# --embed-file bakes the data INTO the .wasm (no separate .data, no path lookup),
+# so it works after `npm install` from any directory, in Node and the browser.
 & $emcc nerve_web.c -O3 -msimd128 -o ..\npm\nerve.mjs `
   '-sMODULARIZE=1' '-sEXPORT_ES6=1' '-sEXPORT_NAME=createNerve' '-sENVIRONMENT=web,node' `
   $EF '-sEXPORTED_RUNTIME_METHODS=ccall,cwrap,HEAPF32' '-sALLOW_MEMORY_GROWTH=1' `
-  --preload-file model_q8.nrv --preload-file nerve.tok `
-  --preload-file minilm_q8.nre --preload-file vocab.txt -lm
+  --embed-file model_q8.nrv --embed-file nerve.tok `
+  --embed-file minilm_q8.nre --embed-file vocab.txt -lm
 Pop-Location
 Write-Output "built npm/nerve.mjs (+ .wasm, .data). Now: cd npm && npm publish"
