@@ -43,6 +43,29 @@ portable enough to run anywhere C compiles — including bare-metal.
 
 ---
 
+## Beyond a library — the modern AI stack, in C you can read
+
+Nerve started as a multilayer perceptron. It now implements, from scratch and
+with zero dependencies, the pieces the giants run on — small enough to read,
+portable enough to run on a 2017 laptop or a browser tab. No GPU, no Python at
+runtime, no cloud, no per-token bill.
+
+| It can… | How | Proof |
+|---------|-----|-------|
+| **Run a real 1.1B-parameter LLM** | decoder Transformer (RMSNorm, RoPE, GQA + KV-cache, SwiGLU, int8) in one header | TinyLlama-1.1B generates coherent text at ~3 tok/s on a laptop CPU — `studies/infer` |
+| **Learn from *you*, on-device** | a frozen model's features + a tiny head trained with Nerve's own autodiff | personalises to your categories in ~40 ms, privately — `studies/infer/learn.c` |
+| **Understand meaning** | a MiniLM BERT-style sentence encoder (int8, ~22 MB) | `cola → food`, `running shoes → fitness`; semantic search by meaning — `studies/embed` |
+| **Recognise handwriting** | the 784-128-10 MLP trained on MNIST | ~97% test accuracy — `studies/mnist` |
+| **Run in your browser** | the same C compiled to a **65 KB** WebAssembly module | generate · teach · search · draw a digit — all client-side, nothing leaves the page — `web/` |
+| **Differentiate anything** | tape-based reverse-mode autodiff in ~200 lines | define a layer without hand-deriving its gradient — `studies/autograd` |
+
+Every capability ships with a runnable proof, and every algorithm is grounded
+in its paper — see [`docs/REFERENCES.md`](docs/REFERENCES.md). Nerve does not try
+to out-scale the giants; it earns its place by being the most **readable,
+portable, reproducible** implementation of the same ideas.
+
+---
+
 ## Quick Start
 
 ### 3-line API
@@ -306,6 +329,14 @@ cmake -B build && cmake --build build
 # Individual example
 gcc -O2 examples/01_xor.c -o xor -lm
 ```
+
+## Academic foundations
+
+Nerve is a from-scratch implementation of established results, written to be
+read. Every component — attention, RoPE, RMSNorm, SwiGLU, GELU, BERT-style
+encoders, Adam, dropout, autodiff, int8 quantization — is grounded in its
+original paper in [`docs/REFERENCES.md`](docs/REFERENCES.md). The contribution is
+readability, portability and reproducibility, not new science.
 
 ## Citation
 
