@@ -5,177 +5,242 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Nerve — your own AI, in your browser</title>
 <style>
-  :root{--bg:#0d1117;--fg:#e6edf3;--mut:#8b949e;--acc:#7ee787;--acc2:#79c0ff;--card:#161b22;--line:#30363d;--err:#ff7b72;}
+  :root{
+    --bg:#070b14; --fg:#e8eef7; --mut:#7d8aa5; --line:#1d2740;
+    --acc:#36f1cd; --acc2:#7aa2ff; --violet:#b388ff; --err:#ff7b88;
+    --card:rgba(20,28,48,.72);
+  }
   *{box-sizing:border-box;}
-  body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;padding:32px 16px;}
-  .wrap{max-width:860px;margin:0 auto;}
-  h1{font-size:34px;margin:0 0 6px;} h1 .d{color:var(--acc);}
-  .tag{color:var(--mut);font-size:17px;margin:0 0 8px;}
-  .privacy{display:inline-block;color:var(--acc);border:1px solid var(--acc);border-radius:999px;padding:3px 12px;font-size:13px;margin-bottom:22px;}
-  h2{font-size:20px;margin:34px 0 4px;} h2 .n{color:var(--acc2);}
-  .hint{color:var(--mut);font-size:14px;margin:0 0 12px;}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;}
-  textarea,input[type=text]{width:100%;background:#0d1117;color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:10px;font-size:15px;}
+  html,body{margin:0;}
+  body{
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(122,162,255,.18), transparent 60%),
+      radial-gradient(900px 500px at -10% 10%, rgba(54,241,205,.14), transparent 55%),
+      radial-gradient(700px 700px at 50% 120%, rgba(179,136,255,.14), transparent 60%),
+      var(--bg);
+    color:var(--fg); font:16px/1.65 ui-sans-serif,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    padding:42px 16px; min-height:100vh;
+  }
+  .wrap{max-width:880px;margin:0 auto;}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;}
+  h1{font-size:46px;line-height:1.05;margin:0 0 10px;font-weight:800;letter-spacing:-.02em;}
+  h1 .grad{background:linear-gradient(92deg,var(--acc),var(--acc2) 55%,var(--violet));-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .tag{color:#aeb9d4;font-size:19px;margin:0 0 14px;max-width:680px;}
+  .tag b{color:#fff;}
+  .pill{display:inline-flex;gap:8px;align-items:center;color:var(--acc);border:1px solid rgba(54,241,205,.4);
+        background:rgba(54,241,205,.07);border-radius:999px;padding:5px 14px;font-size:13px;margin-bottom:30px;}
+  .pill .dotlive{width:8px;height:8px;border-radius:50%;background:var(--acc);box-shadow:0 0 10px var(--acc);animation:pulse 1.6s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  h2{font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--acc2);margin:40px 0 6px;}
+  .lead{font-size:22px;font-weight:700;margin:0 0 4px;}
+  .hint{color:var(--mut);font-size:14px;margin:0 0 14px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;
+        backdrop-filter:blur(8px);box-shadow:0 20px 60px rgba(0,0,0,.35);}
+  textarea,input[type=text]{width:100%;background:#0a1120;color:var(--fg);border:1px solid var(--line);
+        border-radius:10px;padding:12px;font-size:15px;}
   textarea{resize:vertical;}
-  .row{display:flex;gap:12px;align-items:center;margin:12px 0;flex-wrap:wrap;}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;}
+  .chip{font-size:13px;color:#bcd;background:#0c1426;border:1px solid var(--line);border-radius:999px;
+        padding:5px 11px;cursor:pointer;transition:.15s;}
+  .chip:hover{border-color:var(--acc2);color:#fff;}
+  .row{display:flex;gap:14px;align-items:center;margin:12px 0;flex-wrap:wrap;}
   label{color:var(--mut);font-size:13px;}
-  button{background:var(--acc);color:#04260f;border:0;border-radius:8px;padding:10px 18px;font-size:15px;font-weight:600;cursor:pointer;}
-  button:disabled{background:#21262d;color:var(--mut);cursor:default;}
-  .out{white-space:pre-wrap;margin-top:12px;background:#0d1117;border:1px solid var(--line);border-radius:8px;padding:12px;min-height:60px;}
-  .cats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
-  .cat{background:#0d1117;border:1px solid var(--line);border-radius:8px;padding:8px;}
-  .cat.win{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc);}
-  .cat input{font-weight:600;margin-bottom:6px;border:0;border-bottom:1px solid var(--line);border-radius:0;background:transparent;padding:4px 2px;}
-  .cat textarea{min-height:110px;font-size:13px;}
-  .pred{font-size:18px;margin-top:10px;} .pred b{color:var(--acc);}
-  .status{font-size:13px;color:var(--mut);margin-top:8px;} .status.err{color:var(--err);}
-  .foot{color:var(--mut);font-size:13px;margin:34px 0 0;text-align:center;line-height:1.8;}
+  button{position:relative;background:linear-gradient(92deg,var(--acc),var(--acc2));color:#04130f;border:0;
+        border-radius:10px;padding:11px 20px;font-size:15px;font-weight:700;cursor:pointer;transition:.15s;}
+  button:hover:not(:disabled){filter:brightness(1.08);box-shadow:0 0 24px rgba(54,241,205,.35);}
+  button:disabled{background:#1a2238;color:var(--mut);cursor:default;}
+  .out{white-space:pre-wrap;margin-top:12px;background:#0a1120;border:1px solid var(--line);border-radius:10px;
+       padding:14px;min-height:84px;font-size:15px;}
+  .meta{display:flex;justify-content:space-between;color:var(--mut);font-size:12px;margin-top:8px;}
+  .meta .rate{color:var(--acc);}
+  .cats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+  .cat{background:#0a1120;border:1px solid var(--line);border-radius:12px;padding:10px;transition:.2s;}
+  .cat.win{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc),0 0 26px rgba(54,241,205,.25);}
+  .cat input{font-weight:700;margin-bottom:6px;border:0;border-bottom:1px solid var(--line);border-radius:0;
+        background:transparent;padding:4px 2px;color:#fff;}
+  .cat textarea{min-height:120px;font-size:13px;}
+  .pred{margin-top:14px;}
+  .bars{margin-top:8px;}
+  .bar{display:flex;align-items:center;gap:10px;margin:5px 0;font-size:13px;}
+  .bar .nm{width:84px;color:var(--mut);text-align:right;}
+  .bar .track{flex:1;height:9px;background:#0c1426;border-radius:6px;overflow:hidden;}
+  .bar .fill{height:100%;background:linear-gradient(92deg,var(--acc),var(--acc2));border-radius:6px;transition:width .25s;}
+  .bar .pct{width:42px;color:#bcd;}
+  .verdict{font-size:20px;margin-top:12px;font-weight:700;}
+  .verdict.ok b{color:var(--acc);} .verdict.unsure{color:var(--violet);}
+  .status{font-size:13px;color:var(--mut);margin-top:10px;} .status.err{color:var(--err);}
+  .foot{color:var(--mut);font-size:13px;margin:42px 0 0;text-align:center;line-height:1.9;}
   .foot b{color:var(--acc);}
-  @media(max-width:640px){.cats{grid-template-columns:1fr;}}
+  .boot{position:fixed;bottom:14px;left:0;right:0;text-align:center;font-size:12px;color:var(--mut);}
+  @media(max-width:640px){.cats{grid-template-columns:1fr;} h1{font-size:36px;}}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Nerve<span class="d">.</span></h1>
-  <p class="tag">Your own AI — it writes, and it <b>learns from you</b>. Running entirely in your browser.</p>
-  <span class="privacy">🔒 Nothing leaves this page · no server · no GPU · no account · no tokens</span>
+  <h1>Your own AI.<br><span class="grad">It writes. It learns. It's yours.</span></h1>
+  <p class="tag">A real neural network running <b>entirely in your browser</b> — and unlike the cloud, it <b>learns from you</b> and remembers. From a single 65&nbsp;KB engine in pure C.</p>
+  <span class="pill"><span class="dotlive"></span> nothing leaves this page · no server · no GPU · no account · no tokens</span>
 
-  <!-- ===== 1. GENERATE ===== -->
-  <h2><span class="n">1.</span> It writes</h2>
-  <p class="hint">A real language model generating text, live, on your device.</p>
+  <!-- 1. GENERATE -->
+  <h2>01 — generation</h2>
+  <p class="lead">It writes, live, on your device</p>
+  <p class="hint">This is a tiny 15&nbsp;MB model trained only on <i>children's stories</i> — so give it a story opening and watch it stream, token by token, with no server in the loop.</p>
   <div class="card">
     <textarea id="prompt" rows="2">Once upon a time</textarea>
+    <div class="chips" id="chips"></div>
     <div class="row">
-      <label>length <span id="lenv">120</span></label>
+      <label>length <span id="lenv" class="mono">120</span></label>
       <input id="len" type="range" min="20" max="256" value="120" style="flex:1">
       <button id="gen" disabled>Loading…</button>
     </div>
-    <div class="out" id="genout"></div>
+    <div class="out mono" id="genout"></div>
+    <div class="meta"><span id="genmeta">&nbsp;</span><span class="rate mono" id="rate"></span></div>
   </div>
 
-  <!-- ===== 2. TEACH ===== -->
-  <h2><span class="n">2.</span> It learns from you <span style="color:var(--mut);font-size:14px;">— the part the cloud can't do</span></h2>
-  <p class="hint">Give it a few of <i>your own</i> examples per category, press <b>Teach</b>, and it learns them in milliseconds — privately, on your machine. Then type anything and it sorts it. This is an AI that <b>remembers what you teach it</b>.</p>
+  <!-- 2. TEACH -->
+  <h2>02 — on-device learning · the part the cloud can't do</h2>
+  <p class="lead">It learns from <i>you</i>, in milliseconds</p>
+  <p class="hint">Give it a few of your own examples per category, press <b>Teach</b>, then type anything. It tells you where it belongs <b>and how sure it is</b> — and admits when it doesn't know. Edit the categories to make it truly yours.</p>
   <div class="card">
     <div class="cats" id="cats"></div>
     <div class="row">
-      <button id="teach" disabled>Teach Nerve</button>
+      <button id="teach" disabled>⚡ Teach Nerve</button>
       <span class="status" id="tstatus"></span>
     </div>
     <div class="row">
-      <input id="try" type="text" placeholder="Type a new sentence and see where it goes…" disabled>
+      <input id="try" type="text" placeholder="Type a sentence — see where it lands…" disabled>
     </div>
     <div class="pred" id="pred"></div>
   </div>
 
   <p class="foot">
-    Powered by <b>Nerve</b> — a single-header, zero-dependency neural-network engine in pure C,
-    compiled to a 65&nbsp;KB WebAssembly module.<br>
-    The model (~15&nbsp;MB) loads once; everything after that runs offline, on your hardware, with your data.
+    <b>Nerve</b> — a single-header, zero-dependency neural-network engine in pure C, compiled to a 65&nbsp;KB WebAssembly module.<br>
+    The model (~15&nbsp;MB) loads once; after that everything runs offline, on your hardware, with your data. Open your network tab — it stays silent.
   </p>
-  <div class="status" id="boot">starting…</div>
 </div>
+<div class="boot" id="boot">starting…</div>
 
 <script src="nerve.js"></script>
 <script>
   function $(id){return document.getElementById(id);}
-  var M=null, DIM=0, genbuf="", head=null;
+  var M=null, DIM=0, head=null;
 
-  // ---------- default teach data ----------
-  var CATS = [
-    {name:"calendar", ex:"Schedule a meeting tomorrow morning\nMove my dentist appointment\nRemind me about the deadline Friday\nBlock two hours on my calendar"},
-    {name:"food",     ex:"Add tomatoes to the shopping list\nHow long to roast the chicken\nWe are out of coffee and milk\nTry a new pasta recipe tonight"},
-    {name:"fitness",  ex:"I went for a long run today\nMy legs are sore after the workout\nPlan a gym session\nA new personal best on the bench press"}
+  // story openers that suit the tiny model
+  var CHIPS=["Once upon a time","The little robot","In a magical forest","One sunny day a cat","There was a tiny dragon"];
+  $("chips").innerHTML=CHIPS.map(function(c){return '<span class="chip">'+c+'</span>';}).join("");
+  Array.prototype.forEach.call(document.querySelectorAll(".chip"),function(el){
+    el.onclick=function(){ $("prompt").value=el.textContent; };
+  });
+
+  var CATS=[
+    {name:"calendar",ex:"Schedule a meeting tomorrow morning\nMove my dentist appointment\nRemind me about the deadline Friday\nBlock two hours on my calendar"},
+    {name:"food",ex:"Add tomatoes to the shopping list\nHow long to roast the chicken\nWe are out of coffee and milk\nTry a new pasta recipe tonight"},
+    {name:"fitness",ex:"I went for a long run today\nMy legs are sore after the workout\nPlan a gym session\nA new personal best on the bench press"}
   ];
-  (function renderCats(){
-    var h="";
-    for(var i=0;i<CATS.length;i++)
-      h+='<div class="cat" id="cat'+i+'"><input type="text" value="'+CATS[i].name+'" id="cn'+i+'">'
-        +'<textarea id="ce'+i+'">'+CATS[i].ex+'</textarea></div>';
-    $("cats").innerHTML=h;
-  })();
+  $("cats").innerHTML=CATS.map(function(c,i){
+    return '<div class="cat" id="cat'+i+'"><input type="text" value="'+c.name+'" id="cn'+i+'"><textarea id="ce'+i+'">'+c.ex+'</textarea></div>';
+  }).join("");
+
+  $("len").oninput=function(){$("lenv").textContent=$("len").value;};
+  function setBoot(s,err){var e=$("boot");e.textContent=s;e.className="boot"+(err?" err":"");}
 
   // ---------- embeddings + tiny head (all client-side) ----------
-  function embed(text){
-    var p = M.ccall("nerve_web_embed","number",["string"],[text]);
-    var v = M.HEAPF32.subarray(p>>2,(p>>2)+DIM), o=new Float32Array(DIM), n=0,i;
-    for(i=0;i<DIM;i++) n+=v[i]*v[i];
-    n=1/(Math.sqrt(n)+1e-8);
-    for(i=0;i<DIM;i++) o[i]=v[i]*n;
-    return o;
+  function embed(t){
+    var p=M.ccall("nerve_web_embed","number",["string"],[t]);
+    var v=M.HEAPF32.subarray(p>>2,(p>>2)+DIM),o=new Float32Array(DIM),n=0,i;
+    for(i=0;i<DIM;i++)n+=v[i]*v[i]; n=1/(Math.sqrt(n)+1e-8);
+    for(i=0;i<DIM;i++)o[i]=v[i]*n; return o;
   }
   function teach(){
-    var labels=[], X=[], y=[], i, j;
+    var labels=[],X=[],y=[],i,j;
     for(i=0;i<CATS.length;i++){
-      labels.push($("cn"+i).value || ("class "+i));
-      var lines=$("ce"+i).value.split("\n");
-      for(j=0;j<lines.length;j++){ var s=lines[j].trim(); if(s){ X.push(embed(s)); y.push(i); } }
+      labels.push($("cn"+i).value||("class "+i));
+      $("ce"+i).value.split("\n").forEach(function(s){s=s.trim();if(s){X.push(embed(s));y.push(i);}});
     }
-    var NC=labels.length, W=new Float32Array(DIM*NC), b=new Float32Array(NC), e,s,c,k;
-    var t0=performance.now();
-    for(e=0;e<300;e++) for(s=0;s<X.length;s++){
-      var lo=new Float32Array(NC); for(c=0;c<NC;c++){var v=b[c];for(k=0;k<DIM;k++)v+=W[k*NC+c]*X[s][k];lo[c]=v;}
-      var mx=-1e9; for(c=0;c<NC;c++) if(lo[c]>mx)mx=lo[c];
-      var sum=0,pr=new Float32Array(NC); for(c=0;c<NC;c++){pr[c]=Math.exp(lo[c]-mx);sum+=pr[c];}
-      for(c=0;c<NC;c++)pr[c]/=sum;
-      for(c=0;c<NC;c++){var g=pr[c]-(c===y[s]?1:0); b[c]-=0.2*g; for(k=0;k<DIM;k++)W[k*NC+c]-=0.2*g*X[s][k];}
+    var NC=labels.length,W=new Float32Array(DIM*NC),b=new Float32Array(NC),e,s,c,k,t0=performance.now();
+    for(e=0;e<400;e++)for(s=0;s<X.length;s++){
+      var lo=new Float32Array(NC);for(c=0;c<NC;c++){var v=b[c];for(k=0;k<DIM;k++)v+=W[k*NC+c]*X[s][k];lo[c]=v;}
+      var mx=-1e9;for(c=0;c<NC;c++)if(lo[c]>mx)mx=lo[c];var sum=0,pr=new Float32Array(NC);
+      for(c=0;c<NC;c++){pr[c]=Math.exp(lo[c]-mx);sum+=pr[c];}for(c=0;c<NC;c++)pr[c]/=sum;
+      for(c=0;c<NC;c++){var g=pr[c]-(c===y[s]?1:0);b[c]-=0.2*g;for(k=0;k<DIM;k++)W[k*NC+c]-=0.2*g*X[s][k];}
     }
     head={W:W,b:b,NC:NC,labels:labels};
-    return {n:X.length, ms:Math.round(performance.now()-t0)};
+    return {n:X.length,ms:Math.round(performance.now()-t0)};
   }
-  function classify(text){
-    var x=embed(text), best=0, bv=-1e9, c, k;
-    for(c=0;c<head.NC;c++){var v=head.b[c];for(k=0;k<DIM;k++)v+=head.W[k*head.NC+c]*x[k]; if(v>bv){bv=v;best=c;}}
-    return best;
+  function classify(t){
+    var x=embed(t),lo=new Float32Array(head.NC),c,k;
+    for(c=0;c<head.NC;c++){var v=head.b[c];for(k=0;k<DIM;k++)v+=head.W[k*head.NC+c]*x[k];lo[c]=v;}
+    var mx=-1e9;for(c=0;c<head.NC;c++)if(lo[c]>mx)mx=lo[c];var sum=0,pr=[];
+    for(c=0;c<head.NC;c++){pr[c]=Math.exp(lo[c]-mx);sum+=pr[c];}for(c=0;c<head.NC;c++)pr[c]/=sum;
+    var best=0;for(c=1;c<head.NC;c++)if(pr[c]>pr[best])best=c;
+    var sorted=pr.slice().sort(function(a,b){return b-a;});
+    return {best:best,conf:pr[best],margin:sorted[0]-sorted[1],pr:pr};
   }
 
-  // ---------- wiring ----------
-  $("len").oninput=function(){$("lenv").textContent=$("len").value;};
-  function setBoot(s,err){var e=$("boot");e.textContent=s;e.className="status"+(err?" err":"");}
-
-  function doGen(){
-    genbuf=""; $("genout").textContent=""; $("gen").disabled=true; $("gen").textContent="writing…";
-    setTimeout(function(){
-      try{ M.ccall("nerve_web_generate",null,["string","number","number","number","number"],
-            [$("prompt").value, parseInt($("len").value,10), 0.85, 0.9, (Math.random()*1e9)|0]); }
-      catch(e){ $("genout").textContent="error: "+e; }
-      $("gen").disabled=false; $("gen").textContent="Generate";
-    },30);
+  // ---------- streaming generation ----------
+  function streamGen(){
+    $("genout").textContent="";$("gen").disabled=true;$("gen").textContent="writing…";
+    $("genmeta").textContent="";$("rate").textContent="";
+    var n=0,t0=performance.now();
+    M.ccall("nerve_web_gen_start",null,["string","number","number","number","number"],
+      [$("prompt").value,parseInt($("len").value,10),0.85,0.9,(Math.random()*1e9)|0]);
+    function step(){
+      if(M.ccall("nerve_web_gen_done","number",[],[])){ done(); return; }
+      var piece=M.ccall("nerve_web_gen_step","string",[],[]);
+      $("genout").textContent+=piece; n++;
+      var dt=(performance.now()-t0)/1000;
+      if(dt>0)$("rate").textContent=(n/dt).toFixed(0)+" tok/s";
+      setTimeout(step,0);
+    }
+    function done(){
+      var dt=(performance.now()-t0)/1000;
+      $("genmeta").textContent=n+" tokens in "+dt.toFixed(1)+"s, on your CPU";
+      $("gen").disabled=false;$("gen").textContent="Generate";
+    }
+    step();
   }
+
   function doTeach(){
-    $("teach").disabled=true; $("tstatus").textContent="teaching…"; $("tstatus").className="status";
+    $("teach").disabled=true;$("tstatus").textContent="learning…";$("tstatus").className="status";
     setTimeout(function(){
-      try{
-        var r=teach();
-        $("tstatus").textContent="learned from "+r.n+" examples in "+r.ms+" ms — now type a sentence below";
-        $("try").disabled=false; $("try").focus();
-      }catch(e){ $("tstatus").textContent="error: "+e; $("tstatus").className="status err"; }
+      try{var r=teach();
+        $("tstatus").innerHTML="✓ learned from <b style='color:#36f1cd'>"+r.n+"</b> examples in <b style='color:#36f1cd'>"+r.ms+" ms</b> — now type a sentence";
+        $("try").disabled=false;$("try").focus();
+      }catch(e){$("tstatus").textContent="error: "+e;$("tstatus").className="status err";}
       $("teach").disabled=false;
     },30);
   }
   function doTry(){
-    if(!head){return;}
-    var t=$("try").value.trim(); if(!t){return;}
-    var c=classify(t);
-    for(var i=0;i<head.NC;i++) $("cat"+i).className="cat"+(i===c?" win":"");
-    $("pred").innerHTML='&rarr; <b>'+head.labels[c]+'</b>';
+    if(!head){return;} var t=$("try").value.trim();
+    if(!t){$("pred").innerHTML="";for(var i=0;i<head.NC;i++)$("cat"+i).className="cat";return;}
+    var r=classify(t), unsure=(r.conf<0.55||r.margin<0.15);
+    var bars='<div class="bars">';
+    for(var c=0;c<head.NC;c++){
+      bars+='<div class="bar"><span class="nm">'+head.labels[c]+'</span>'
+          +'<span class="track"><span class="fill" style="width:'+(r.pr[c]*100).toFixed(0)+'%"></span></span>'
+          +'<span class="pct mono">'+(r.pr[c]*100).toFixed(0)+'%</span></div>';
+    }
+    bars+='</div>';
+    for(var i=0;i<head.NC;i++)$("cat"+i).className="cat"+(i===r.best&&!unsure?" win":"");
+    var verdict = unsure
+      ? '<div class="verdict unsure">🤔 not sure — this doesn\'t clearly match anything you taught</div>'
+      : '<div class="verdict ok">&rarr; <b>'+head.labels[r.best]+'</b> <span style="color:#7d8aa5;font-size:14px">('+(r.conf*100).toFixed(0)+'% sure)</span></div>';
+    $("pred").innerHTML=verdict+bars;
   }
 
   if(typeof createNerve!=="function"){ setBoot("nerve.js failed to load",true); }
-  else {
+  else{
     setBoot("loading model (~15 MB)…");
-    createNerve({ onPiece:function(s){ genbuf+=s; $("genout").textContent=genbuf; } })
-    .then(function(mod){
+    createNerve({}).then(function(mod){
       M=mod;
       var rc=M.ccall("nerve_web_init","number",[],[]);
-      if(rc!==0){ setBoot("model load failed (code "+rc+")",true); return; }
+      if(rc!==0){setBoot("model load failed (code "+rc+")",true);return;}
       DIM=M.ccall("nerve_web_dim","number",[],[]);
-      $("gen").disabled=false; $("gen").textContent="Generate"; $("gen").onclick=doGen;
-      $("teach").disabled=false; $("teach").onclick=doTeach;
+      $("gen").disabled=false;$("gen").textContent="Generate";$("gen").onclick=streamGen;
+      $("teach").disabled=false;$("teach").onclick=doTeach;
       $("try").oninput=doTry;
-      setBoot("ready — model loaded, "+DIM+"-dim features. Everything below runs locally.");
-    })
-    .catch(function(e){ setBoot("init failed: "+e,true); });
+      setBoot("● ready — "+DIM+"-dim model loaded locally · 0 network calls from here on");
+    }).catch(function(e){setBoot("init failed: "+e,true);});
   }
 </script>
 </body>

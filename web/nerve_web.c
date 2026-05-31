@@ -55,6 +55,47 @@ float *nerve_web_embed(const char *text)
     return nerve_infer_hidden(&g_model);
 }
 
+/* ---- streaming generation: one token per call, driven from JS so the page
+ *      stays responsive and the text appears live ---- */
+static int           g_ptoks[4096];
+static int           g_np, g_pos, g_steps, g_token;
+static nerve_sampler g_gs;
+static char          g_piece[1024];
+
+EMSCRIPTEN_KEEPALIVE
+void nerve_web_gen_start(const char *prompt, int steps, float temp, float topp, int seed)
+{
+    if (!g_ready) return;
+    g_np = nerve_tokenizer_encode(&g_tok, prompt, 1, 0, g_ptoks);
+    if (g_np < 1) { g_pos = g_steps = 0; return; }
+    if (steps > g_model.config.seq_len) steps = g_model.config.seq_len;
+    g_steps = steps; g_pos = 0; g_token = g_ptoks[0];
+    nerve_sampler_init(&g_gs, g_model.config.vocab_size, temp, topp,
+                       (unsigned long long)(unsigned)seed);
+}
+
+EMSCRIPTEN_KEEPALIVE
+int nerve_web_gen_done(void) { return (!g_ready) || g_pos >= g_steps; }
+
+/* Advance one token; returns its decoded text fragment ("" when finished). */
+EMSCRIPTEN_KEEPALIVE
+const char *nerve_web_gen_step(void)
+{
+    float *logits; int next, prev; const char *piece;
+    g_piece[0] = '\0';
+    if (!g_ready || g_pos >= g_steps) { g_pos = g_steps; return g_piece; }
+    logits = nerve_infer_forward(&g_model, g_token, g_pos);
+    if (g_pos < g_np - 1) next = g_ptoks[g_pos + 1];
+    else                  next = nerve_i__sample(&g_gs, logits);
+    prev = g_token; g_pos++;
+    if (next == 1) { g_pos = g_steps; nerve_sampler_free(&g_gs); return g_piece; }
+    piece = nerve_i__decode(&g_tok, prev, next);
+    strncpy(g_piece, piece, sizeof(g_piece) - 1);
+    g_token = next;
+    if (g_pos >= g_steps) nerve_sampler_free(&g_gs);
+    return g_piece;
+}
+
 /* Generate from a prompt; each token fragment is streamed via Module.onPiece. */
 EMSCRIPTEN_KEEPALIVE
 void nerve_web_generate(const char *prompt, int steps, float temp, float topp, int seed)
