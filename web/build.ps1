@@ -17,10 +17,10 @@ Copy-Item ..\studies\infer\model_q8.nrv .\model_q8.nrv -Force
 Copy-Item ..\studies\infer\nerve.tok    .\nerve.tok    -Force
 
 emcc nerve_web.c -O3 -msimd128 -o nerve.js `
-  -s "EXPORTED_FUNCTIONS=['_nerve_web_init','_nerve_web_generate','_nerve_web_ctx']" `
-  -s "EXPORTED_RUNTIME_METHODS=['ccall','cwrap']" `
-  -s ALLOW_MEMORY_GROWTH=1 `
-  -s INITIAL_MEMORY=67108864 `
+  '-sMODULARIZE=1' '-sEXPORT_NAME=createNerve' '-sENVIRONMENT=web' `
+  '-sEXPORTED_FUNCTIONS=_nerve_web_init,_nerve_web_generate,_nerve_web_ctx' `
+  '-sEXPORTED_RUNTIME_METHODS=ccall,cwrap' `
+  '-sALLOW_MEMORY_GROWTH=1' '-sINITIAL_MEMORY=67108864' `
   --preload-file model_q8.nrv --preload-file nerve.tok `
   -lm
 
