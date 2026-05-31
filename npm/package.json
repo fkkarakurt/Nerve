@@ -1,0 +1,24 @@
+{
+  "name": "@fkkarakurt/nerve",
+  "version": "2.1.0",
+  "description": "Run a real Transformer (text generation) and a MiniLM sentence-embedding model entirely in WebAssembly — browser or Node, no server, no GPU. Zero-dependency neural nets in pure C.",
+  "type": "module",
+  "main": "nerve.js",
+  "module": "nerve.js",
+  "types": "nerve.d.ts",
+  "exports": {
+    ".": { "types": "./nerve.d.ts", "import": "./nerve.js" }
+  },
+  "files": ["nerve.js", "nerve.d.ts", "nerve.mjs", "nerve.wasm", "nerve.data", "README.md"],
+  "sideEffects": false,
+  "keywords": [
+    "ai", "llm", "transformer", "embeddings", "sentence-embeddings", "minilm",
+    "wasm", "webassembly", "on-device", "local-ai", "private-ai", "offline",
+    "text-generation", "semantic-search", "zero-dependency"
+  ],
+  "author": "Fatih Küçükkarakurt",
+  "license": "GPL-3.0-or-later",
+  "repository": { "type": "git", "url": "git+https://github.com/fkkarakurt/nerve.git" },
+  "homepage": "https://github.com/fkkarakurt/nerve",
+  "engines": { "node": ">=18" }
+}

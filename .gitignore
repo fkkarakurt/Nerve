@@ -41,6 +41,12 @@ web/nerve.js
 web/nerve.wasm
 web/nerve.data
 
+# -- npm package generated artifacts (shipped via package.json "files" on publish)
+npm/nerve.mjs
+npm/nerve.wasm
+npm/nerve.data
+npm/_t.mjs
+
 # -- Python ---------------------------------------------------------------------
 __pycache__/
 *.pyc
