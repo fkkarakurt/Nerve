@@ -33,30 +33,38 @@ def get(name):
     f.seek(DATA + s)
     return np.frombuffer(f.read(e - s), "<f4").reshape(m["shape"])
 
+q8 = (len(sys.argv) > 4 and sys.argv[4] == "int8")
+
 out = open(outp, "wb")
 out.write(b"NEMB")
-for v in (1, H, L, NH, I, V, MP):
+for v in (1, H, L, NH, I, V, MP, 1 if q8 else 0):    # version + 6 cfg + flags
     out.write(struct.pack("<i", v))
-out.write(b"\x00" * (64 - 4 - 7*4))      # pad header to 64 bytes
+out.write(b"\x00" * (64 - 4 - 8*4))                  # pad header to 64 bytes
 
-def w(a): out.write(np.ascontiguousarray(a, dtype="<f4").tobytes())
+def wf(a): out.write(np.ascontiguousarray(a, dtype="<f4").tobytes())
+def wq(W):                                           # per-row symmetric int8
+    amax = np.abs(W).max(axis=1)
+    sc = np.where(amax > 0, amax / 127.0, 1.0).astype("<f4")
+    out.write(sc.tobytes())
+    out.write(np.clip(np.rint(W / sc[:, None]), -127, 127).astype(np.int8).tobytes())
+W = wq if q8 else wf                                 # big matrices: quantised if int8
 
 # embeddings
-w(get("embeddings.word_embeddings.weight"))
-w(get("embeddings.position_embeddings.weight"))
-w(get("embeddings.token_type_embeddings.weight"))
-w(get("embeddings.LayerNorm.weight")); w(get("embeddings.LayerNorm.bias"))
+W(get("embeddings.word_embeddings.weight"))
+wf(get("embeddings.position_embeddings.weight"))
+wf(get("embeddings.token_type_embeddings.weight"))
+wf(get("embeddings.LayerNorm.weight")); wf(get("embeddings.LayerNorm.bias"))
 # layers
 P = "encoder.layer.{}."
 for l in range(L):
     p = P.format(l)
-    w(get(p+"attention.self.query.weight")); w(get(p+"attention.self.query.bias"))
-    w(get(p+"attention.self.key.weight"));   w(get(p+"attention.self.key.bias"))
-    w(get(p+"attention.self.value.weight")); w(get(p+"attention.self.value.bias"))
-    w(get(p+"attention.output.dense.weight")); w(get(p+"attention.output.dense.bias"))
-    w(get(p+"attention.output.LayerNorm.weight")); w(get(p+"attention.output.LayerNorm.bias"))
-    w(get(p+"intermediate.dense.weight")); w(get(p+"intermediate.dense.bias"))
-    w(get(p+"output.dense.weight")); w(get(p+"output.dense.bias"))
-    w(get(p+"output.LayerNorm.weight")); w(get(p+"output.LayerNorm.bias"))
+    W(get(p+"attention.self.query.weight")); wf(get(p+"attention.self.query.bias"))
+    W(get(p+"attention.self.key.weight"));   wf(get(p+"attention.self.key.bias"))
+    W(get(p+"attention.self.value.weight")); wf(get(p+"attention.self.value.bias"))
+    W(get(p+"attention.output.dense.weight")); wf(get(p+"attention.output.dense.bias"))
+    wf(get(p+"attention.output.LayerNorm.weight")); wf(get(p+"attention.output.LayerNorm.bias"))
+    W(get(p+"intermediate.dense.weight")); wf(get(p+"intermediate.dense.bias"))
+    W(get(p+"output.dense.weight")); wf(get(p+"output.dense.bias"))
+    wf(get(p+"output.LayerNorm.weight")); wf(get(p+"output.LayerNorm.bias"))
 out.close()
-print(f"wrote {outp}  (H={H} L={L} heads={NH} I={I} vocab={V})")
+print(f"wrote {outp}  (H={H} L={L} heads={NH} I={I} vocab={V} {'int8' if q8 else 'fp32'})")

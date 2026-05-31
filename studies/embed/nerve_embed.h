@@ -24,18 +24,23 @@ extern "C" {
 #endif
 
 typedef struct {
-    int hidden, n_layers, n_heads, intermediate, vocab, max_pos;
+    int hidden, n_layers, n_heads, intermediate, vocab, max_pos, quantized;
 } nerve_embed_config;
 
 typedef struct {
-    float *qw,*qb,*kw,*kb,*vw,*vb,*ow,*ob, *aln_w,*aln_b,
-          *iw,*ib,*dw,*db, *oln_w,*oln_b;
+    /* fp32 weights (NULL in int8 mode); biases + LayerNorm always fp32 */
+    float *qw,*kw,*vw,*ow,*iw,*dw;
+    float *qb,*kb,*vb,*ob, *aln_w,*aln_b, *ib,*db, *oln_w,*oln_b;
+    /* int8 weights + per-row scales (NULL in fp32 mode) */
+    signed char *Qqw,*Qkw,*Qvw,*Qow,*Qiw,*Qdw;
+    float       *Sqw,*Skw,*Svw,*Sow,*Siw,*Sdw;
 } nerve_embed_layer;
 
 typedef struct {
     nerve_embed_config cfg;
     float  *data;                 /* the weight blob */
-    float  *word, *pos, *type, *eln_w, *eln_b;
+    float  *word, *pos, *type, *eln_w, *eln_b;     /* word=NULL in int8 mode */
+    signed char *Qword; float *Sword;              /* int8 word embeddings  */
     nerve_embed_layer *layer;
     /* WordPiece vocab + hash */
     char  **vocab;
@@ -68,17 +73,54 @@ void nerve_embed_text(nerve_embed_t *m, const char *text, float *out);
 #define NERVE_EMB_UNK 100
 #define NERVE_EMB_MAXT 256
 
+/* `restrict` where available; still builds as ANSI C89 otherwise. */
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
+#  define NERVE_E_RESTRICT restrict
+#elif defined(__GNUC__)
+#  define NERVE_E_RESTRICT __restrict__
+#else
+#  define NERVE_E_RESTRICT
+#endif
+
 /* ── small kernels ───────────────────────────────────────────────────────── */
-static void nerve_e__linear(float *out, const float *x, const float *w,
-                            const float *b, int in, int d)
-{   /* out[d] = W[d,in] x[in] + b[d] */
-    int i, j;
+/* out[d] = W[d,in] x[in] + b[d]. Eight accumulators so -O3 -march=native
+ * auto-vectorises the dot product (portable SIMD, no intrinsics). */
+static void nerve_e__linear(float *NERVE_E_RESTRICT out, const float *NERVE_E_RESTRICT x,
+                            const float *NERVE_E_RESTRICT w, const float *b, int in, int d)
+{
+    int i, j, k;
     for (i = 0; i < d; i++) {
-        const float *r = w + (long)i * in;
-        float s = b ? b[i] : 0.0f;
-        for (j = 0; j < in; j++) s += r[j] * x[j];
-        out[i] = s;
+        const float *NERVE_E_RESTRICT r = w + (long)i * in;
+        float acc[8], v;
+        for (k = 0; k < 8; k++) acc[k] = 0.0f;
+        for (j = 0; j + 8 <= in; j += 8) for (k = 0; k < 8; k++) acc[k] += r[j+k] * x[j+k];
+        v = ((acc[0]+acc[1])+(acc[2]+acc[3])) + ((acc[4]+acc[5])+(acc[6]+acc[7]));
+        for (; j < in; j++) v += r[j] * x[j];
+        out[i] = v + (b ? b[i] : 0.0f);
     }
+}
+/* int8 weights with one float scale per output row. */
+static void nerve_e__qlinear(float *NERVE_E_RESTRICT out, const float *NERVE_E_RESTRICT x,
+                             const signed char *NERVE_E_RESTRICT q, const float *NERVE_E_RESTRICT sc,
+                             const float *b, int in, int d)
+{
+    int i, j, k;
+    for (i = 0; i < d; i++) {
+        const signed char *NERVE_E_RESTRICT r = q + (long)i * in;
+        float acc[8], v;
+        for (k = 0; k < 8; k++) acc[k] = 0.0f;
+        for (j = 0; j + 8 <= in; j += 8) for (k = 0; k < 8; k++) acc[k] += (float)r[j+k] * x[j+k];
+        v = ((acc[0]+acc[1])+(acc[2]+acc[3])) + ((acc[4]+acc[5])+(acc[6]+acc[7]));
+        for (; j < in; j++) v += (float)r[j] * x[j];
+        out[i] = v * sc[i] + (b ? b[i] : 0.0f);
+    }
+}
+/* dispatch: int8 when q != NULL, else fp32 */
+static void nerve_e__lin(const float *fw, const signed char *qw, const float *sc,
+                         float *out, const float *x, const float *b, int in, int d)
+{
+    if (qw) nerve_e__qlinear(out, x, qw, sc, b, in, d);
+    else    nerve_e__linear(out, x, fw, b, in, d);
 }
 static void nerve_e__layernorm(float *x, const float *w, const float *b, int n)
 {
@@ -184,6 +226,50 @@ static char **nerve_e__load_vocab(const char *path, int vocab)
     return (i == vocab) ? v : (free(v), (char **)0);
 }
 
+static float *nerve_e__cf(char **c, long n) { float *p = (float *)*c; *c += n * (long)sizeof(float); return p; }
+static signed char *nerve_e__cq(char **c, long n) { signed char *p = (signed char *)*c; *c += n; return p; }
+
+static void nerve_e__map_fp32(nerve_embed_t *m)
+{
+    nerve_embed_config *c = &m->cfg; int H = c->hidden, I = c->intermediate, l;
+    float *p = m->data;
+    m->word = p; p += (long)c->vocab * H; m->Qword = 0; m->Sword = 0;
+    m->pos = p; p += (long)c->max_pos * H;
+    m->type = p; p += 2 * H;
+    m->eln_w = p; p += H; m->eln_b = p; p += H;
+    for (l = 0; l < c->n_layers; l++) {
+        nerve_embed_layer *L = &m->layer[l];
+        L->qw=p;p+=(long)H*H; L->qb=p;p+=H; L->kw=p;p+=(long)H*H; L->kb=p;p+=H;
+        L->vw=p;p+=(long)H*H; L->vb=p;p+=H; L->ow=p;p+=(long)H*H; L->ob=p;p+=H;
+        L->aln_w=p;p+=H; L->aln_b=p;p+=H;
+        L->iw=p;p+=(long)I*H; L->ib=p;p+=I; L->dw=p;p+=(long)H*I; L->db=p;p+=H;
+        L->oln_w=p;p+=H; L->oln_b=p;p+=H;
+        L->Qqw=L->Qkw=L->Qvw=L->Qow=L->Qiw=L->Qdw=0;
+    }
+}
+
+static void nerve_e__map_q(nerve_embed_t *m)
+{
+    nerve_embed_config *cf = &m->cfg; int H = cf->hidden, I = cf->intermediate, l;
+    char *c = (char *)m->data;
+    m->Sword = nerve_e__cf(&c, cf->vocab); m->Qword = nerve_e__cq(&c, (long)cf->vocab*H); m->word = 0;
+    m->pos = nerve_e__cf(&c, (long)cf->max_pos*H);
+    m->type = nerve_e__cf(&c, 2*H);
+    m->eln_w = nerve_e__cf(&c, H); m->eln_b = nerve_e__cf(&c, H);
+    for (l = 0; l < cf->n_layers; l++) {
+        nerve_embed_layer *L = &m->layer[l];
+        L->Sqw=nerve_e__cf(&c,H); L->Qqw=nerve_e__cq(&c,(long)H*H); L->qb=nerve_e__cf(&c,H);
+        L->Skw=nerve_e__cf(&c,H); L->Qkw=nerve_e__cq(&c,(long)H*H); L->kb=nerve_e__cf(&c,H);
+        L->Svw=nerve_e__cf(&c,H); L->Qvw=nerve_e__cq(&c,(long)H*H); L->vb=nerve_e__cf(&c,H);
+        L->Sow=nerve_e__cf(&c,H); L->Qow=nerve_e__cq(&c,(long)H*H); L->ob=nerve_e__cf(&c,H);
+        L->aln_w=nerve_e__cf(&c,H); L->aln_b=nerve_e__cf(&c,H);
+        L->Siw=nerve_e__cf(&c,I); L->Qiw=nerve_e__cq(&c,(long)I*H); L->ib=nerve_e__cf(&c,I);
+        L->Sdw=nerve_e__cf(&c,H); L->Qdw=nerve_e__cq(&c,(long)H*I); L->db=nerve_e__cf(&c,H);
+        L->oln_w=nerve_e__cf(&c,H); L->oln_b=nerve_e__cf(&c,H);
+        L->qw=L->kw=L->vw=L->ow=L->iw=L->dw=0;
+    }
+}
+
 int nerve_embed_load(nerve_embed_t *m, const char *model_path, const char *vocab_path)
 {
     FILE *f = fopen(model_path, "rb");
@@ -194,29 +280,16 @@ int nerve_embed_load(nerve_embed_t *m, const char *model_path, const char *vocab
     fread(&ver, 4, 1, f);
     fread(&c->hidden, 4, 1, f); fread(&c->n_layers, 4, 1, f); fread(&c->n_heads, 4, 1, f);
     fread(&c->intermediate, 4, 1, f); fread(&c->vocab, 4, 1, f); fread(&c->max_pos, 4, 1, f);
+    c->quantized = 0; fread(&c->quantized, 4, 1, f);   /* 0 for legacy fp32 (pad was zero) */
     fseek(f, 0, SEEK_END); bytes = ftell(f) - 64; fseek(f, 64, SEEK_SET);
     m->data = (float *)malloc((size_t)bytes);
     if (fread(m->data, 1, (size_t)bytes, f) != (size_t)bytes) { fclose(f); return -3; }
     fclose(f);
 
-    /* map weight pointers (canonical order from convert_minilm.py) */
-    {
-        int H = c->hidden, I = c->intermediate, l;
-        p = m->data;
-        m->word = p; p += (long)c->vocab * H;
-        m->pos  = p; p += (long)c->max_pos * H;
-        m->type = p; p += 2 * H;
-        m->eln_w = p; p += H; m->eln_b = p; p += H;
-        m->layer = (nerve_embed_layer *)calloc((size_t)c->n_layers, sizeof(nerve_embed_layer));
-        for (l = 0; l < c->n_layers; l++) {
-            nerve_embed_layer *L = &m->layer[l];
-            L->qw=p;p+=H*H; L->qb=p;p+=H; L->kw=p;p+=H*H; L->kb=p;p+=H;
-            L->vw=p;p+=H*H; L->vb=p;p+=H; L->ow=p;p+=H*H; L->ob=p;p+=H;
-            L->aln_w=p;p+=H; L->aln_b=p;p+=H;
-            L->iw=p;p+=(long)I*H; L->ib=p;p+=I; L->dw=p;p+=(long)H*I; L->db=p;p+=H;
-            L->oln_w=p;p+=H; L->oln_b=p;p+=H;
-        }
-    }
+    (void)p;
+    m->layer = (nerve_embed_layer *)calloc((size_t)c->n_layers, sizeof(nerve_embed_layer));
+    if (c->quantized) nerve_e__map_q(m);
+    else              nerve_e__map_fp32(m);
 
     /* vocab + hash table */
     m->vocab = nerve_e__load_vocab(vocab_path, c->vocab);
@@ -268,8 +341,14 @@ void nerve_embed_text(nerve_embed_t *m, const char *text, float *out)
     /* embeddings + LayerNorm */
     for (t = 0; t < n; t++) {
         float *xt = m->x + (long)t * H;
-        const float *we = m->word + (long)toks[t] * H, *pe = m->pos + (long)t * H;
-        for (i = 0; i < H; i++) xt[i] = we[i] + pe[i] + m->type[i];   /* type 0 */
+        const float *pe = m->pos + (long)t * H;
+        if (m->cfg.quantized) {
+            const signed char *we = m->Qword + (long)toks[t]*H; float s = m->Sword[toks[t]];
+            for (i = 0; i < H; i++) xt[i] = s * (float)we[i] + pe[i] + m->type[i];
+        } else {
+            const float *we = m->word + (long)toks[t]*H;
+            for (i = 0; i < H; i++) xt[i] = we[i] + pe[i] + m->type[i];
+        }
         nerve_e__layernorm(xt, m->eln_w, m->eln_b, H);
     }
 
@@ -278,9 +357,9 @@ void nerve_embed_text(nerve_embed_t *m, const char *text, float *out)
         /* Q,K,V for all tokens */
         for (t = 0; t < n; t++) {
             float *xt = m->x + (long)t * H;
-            nerve_e__linear(m->q + (long)t*H, xt, Ly->qw, Ly->qb, H, H);
-            nerve_e__linear(m->k + (long)t*H, xt, Ly->kw, Ly->kb, H, H);
-            nerve_e__linear(m->v + (long)t*H, xt, Ly->vw, Ly->vb, H, H);
+            nerve_e__lin(Ly->qw, Ly->Qqw, Ly->Sqw, m->q + (long)t*H, xt, Ly->qb, H, H);
+            nerve_e__lin(Ly->kw, Ly->Qkw, Ly->Skw, m->k + (long)t*H, xt, Ly->kb, H, H);
+            nerve_e__lin(Ly->vw, Ly->Qvw, Ly->Svw, m->v + (long)t*H, xt, Ly->vb, H, H);
         }
         /* bidirectional attention -> ctx */
         for (t = 0; t < n; t++)
@@ -304,16 +383,16 @@ void nerve_embed_text(nerve_embed_t *m, const char *text, float *out)
         /* attention output + residual + LayerNorm */
         for (t = 0; t < n; t++) {
             float *xt = m->x + (long)t*H, *xb = m->xb + (long)t*H;
-            nerve_e__linear(xb, m->ctx + (long)t*H, Ly->ow, Ly->ob, H, H);
+            nerve_e__lin(Ly->ow, Ly->Qow, Ly->Sow, xb, m->ctx + (long)t*H, Ly->ob, H, H);
             for (i = 0; i < H; i++) xt[i] += xb[i];
             nerve_e__layernorm(xt, Ly->aln_w, Ly->aln_b, H);
         }
         /* FFN + residual + LayerNorm */
         for (t = 0; t < n; t++) {
             float *xt = m->x + (long)t*H, *xb = m->xb + (long)t*H;
-            nerve_e__linear(m->h1, xt, Ly->iw, Ly->ib, H, m->cfg.intermediate);
+            nerve_e__lin(Ly->iw, Ly->Qiw, Ly->Siw, m->h1, xt, Ly->ib, H, m->cfg.intermediate);
             for (i = 0; i < m->cfg.intermediate; i++) m->h1[i] = nerve_e__gelu(m->h1[i]);
-            nerve_e__linear(xb, m->h1, Ly->dw, Ly->db, m->cfg.intermediate, H);
+            nerve_e__lin(Ly->dw, Ly->Qdw, Ly->Sdw, xb, m->h1, Ly->db, m->cfg.intermediate, H);
             for (i = 0; i < H; i++) xt[i] += xb[i];
             nerve_e__layernorm(xt, Ly->oln_w, Ly->oln_b, H);
         }

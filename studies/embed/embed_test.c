@@ -18,15 +18,16 @@ static const char *TESTS[] = {"cola","i want to eat a hamburger","what time is m
     "go jogging in the park","order a pizza","the sky is blue today","set a reminder for the call",
     "bench press personal best","i need new running shoes","buy milk and eggs"};
 
-int main(void)
+int main(int argc, char **argv)
 {
     nerve_embed_t m;
     int H, i, j, c, rc;
+    const char *mp = (argc > 1) ? argv[1] : "minilm.nre";
     const char **CATS[3]; int CN[3];
     float *cent;
     CATS[0]=CAL; CN[0]=5; CATS[1]=FOO; CN[1]=5; CATS[2]=FIT; CN[2]=5;
 
-    if ((rc = nerve_embed_load(&m, "minilm.nre", "vocab.txt"))) { printf("load %d\n", rc); return 1; }
+    if ((rc = nerve_embed_load(&m, mp, "vocab.txt"))) { printf("load %d\n", rc); return 1; }
     H = nerve_embed_dim(&m);
     printf("MiniLM encoder loaded: dim=%d, %d layers\n\n", H, m.cfg.n_layers);
 
