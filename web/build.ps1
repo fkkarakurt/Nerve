@@ -12,16 +12,19 @@ $envps = Join-Path $emsdk "emsdk_env.ps1"
 if (-not (Test-Path $envps)) { throw "emsdk_env.ps1 not found at $envps (set `$env:EMSDK_ROOT)" }
 . $envps
 
-# bring the model + tokenizer in for preloading (gitignored; produced under studies/infer)
-Copy-Item ..\studies\infer\model_q8.nrv .\model_q8.nrv -Force
-Copy-Item ..\studies\infer\nerve.tok    .\nerve.tok    -Force
+# bring the models in for preloading (gitignored; produced under studies/)
+Copy-Item ..\studies\infer\model_q8.nrv  .\model_q8.nrv  -Force   # decoder (generate)
+Copy-Item ..\studies\infer\nerve.tok     .\nerve.tok     -Force
+Copy-Item ..\studies\embed\minilm_q8.nre .\minilm_q8.nre -Force   # encoder (smart embeddings)
+Copy-Item ..\studies\embed\vocab.txt     .\vocab.txt     -Force
 
 emcc nerve_web.c -O3 -msimd128 -o nerve.js `
   '-sMODULARIZE=1' '-sEXPORT_NAME=createNerve' '-sENVIRONMENT=web' `
   '-sEXPORTED_FUNCTIONS=_nerve_web_init,_nerve_web_generate,_nerve_web_ctx,_nerve_web_dim,_nerve_web_embed,_nerve_web_gen_start,_nerve_web_gen_step,_nerve_web_gen_done' `
   '-sEXPORTED_RUNTIME_METHODS=ccall,cwrap,HEAPF32' `
-  '-sALLOW_MEMORY_GROWTH=1' '-sINITIAL_MEMORY=67108864' `
+  '-sALLOW_MEMORY_GROWTH=1' '-sINITIAL_MEMORY=134217728' `
   --preload-file model_q8.nrv --preload-file nerve.tok `
+  --preload-file minilm_q8.nre --preload-file vocab.txt `
   -lm
 
 Write-Output "built nerve.js / nerve.wasm / nerve.data"

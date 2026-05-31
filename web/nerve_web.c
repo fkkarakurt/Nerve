@@ -8,11 +8,15 @@
  */
 #define NERVE_INFER_IMPLEMENTATION
 #include "../studies/infer/nerve_infer.h"
+#define NERVE_EMBED_IMPLEMENTATION
+#include "../studies/embed/nerve_embed.h"
 #include <emscripten.h>
 
-static nerve_transformer g_model;
+static nerve_transformer g_model;       /* decoder: text generation         */
 static nerve_tokenizer   g_tok;
-static int               g_ready = 0;
+static nerve_embed_t     g_enc;         /* encoder: smart sentence meaning   */
+static int               g_ready = 0, g_enc_ready = 0;
+static float             g_encbuf[1024];
 
 /* Push one decoded text fragment up to the page (defined in JS). */
 EM_JS(void, nerve_js_emit, (const char *p), {
@@ -33,6 +37,8 @@ int nerve_web_init(void)
     if ((rc = nerve_infer_load(&g_model, "model_q8.nrv")) != 0) return 10 + rc;
     if ((rc = nerve_tokenizer_load(&g_tok, "nerve.tok"))   != 0) return 20 + rc;
     g_ready = 1;
+    if ((rc = nerve_embed_load(&g_enc, "minilm_q8.nre", "vocab.txt")) != 0) return 30 + rc;
+    g_enc_ready = 1;
     return 0;
 }
 
@@ -40,27 +46,16 @@ EMSCRIPTEN_KEEPALIVE
 int nerve_web_ctx(void) { return g_ready ? g_model.config.seq_len : 0; }
 
 EMSCRIPTEN_KEEPALIVE
-int nerve_web_dim(void) { return g_ready ? g_model.config.dim : 0; }
+int nerve_web_dim(void) { return g_enc_ready ? nerve_embed_dim(&g_enc) : 0; }
 
-/* Encode text -> the model's final hidden state (dim floats). Returns a pointer
- * into the engine's buffer (valid until the next call); JS copies it out. This
- * is the feature the in-browser "teach" demo trains a tiny head on. */
-/* Mean-pooled sentence embedding (average of every token's final hidden state)
- * — a far better whole-sentence representation than the last token alone. */
-static float g_embuf[8192];
+/* Encode text -> a genuinely-smart sentence embedding from the MiniLM encoder.
+ * Returns a pointer into a static buffer (valid until the next call). */
 EMSCRIPTEN_KEEPALIVE
 float *nerve_web_embed(const char *text)
 {
-    int toks[1024], n, p, i, dim = g_model.config.dim;
-    if (!g_ready) return 0;
-    n = nerve_tokenizer_encode(&g_tok, text, 1, 0, toks);
-    for (i = 0; i < dim; i++) g_embuf[i] = 0.0f;
-    for (p = 0; p < n; p++) {
-        float *h = (nerve_infer_forward(&g_model, toks[p], p), nerve_infer_hidden(&g_model));
-        for (i = 0; i < dim; i++) g_embuf[i] += h[i];
-    }
-    for (i = 0; i < dim; i++) g_embuf[i] /= (float)(n > 0 ? n : 1);
-    return g_embuf;
+    if (!g_enc_ready) return 0;
+    nerve_embed_text(&g_enc, text, g_encbuf);
+    return g_encbuf;
 }
 
 /* ---- streaming generation: one token per call, driven from JS so the page
