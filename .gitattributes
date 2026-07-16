@@ -1,0 +1,37 @@
+# Normalise line endings in the repository to LF.
+#
+# Without this, files committed from Windows carry CRLF, and a CRLF shell
+# script fails on Linux with the famously unhelpful `bash: \r: command not
+# found`. studies/mnist/download_data.sh was committed exactly that way.
+# Nerve is built and tested on Linux, macOS and Windows, so the repository
+# keeps one canonical form and Git converts on checkout where a platform
+# needs it.
+
+* text=auto eol=lf
+
+# Windows-only scripts must keep CRLF: PowerShell is fine either way, but
+# a .bat/.cmd with LF endings can misparse in cmd.exe.
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+*.ps1  text eol=crlf
+
+# Shell scripts must be LF everywhere, including on a Windows checkout.
+*.sh   text eol=lf
+
+# Binary assets Git must never touch.
+*.png  binary
+*.jpg  binary
+*.gif  binary
+*.pdf  binary
+*.zip  binary
+*.wasm binary
+*.bin  binary
+*.nrv  binary
+*.tok  binary
+*.nre  binary
+*.gz   binary
+*-ubyte binary
+
+# Keep generated/vendored artifacts out of language statistics and diffs.
+nerve_manual.pdf   -diff
+legacy_archive.zip -diff

@@ -129,9 +129,9 @@ docs/latex/*.fls
 docs/latex/*.synctex.gz
 docs/latex/*.pdf
 
-web
-site
-*.html
+# NOTE: do not add bare `web`, `site` or `*.html` rules here. They ignore the
+# demo and docs *sources*, not just build output. The generated WebAssembly
+# artifacts and model blobs are already covered above, by path and extension.
 
 # -- OCR training data (large binaries -- download separately) ------------------
 trainingData/optdigits.training/
