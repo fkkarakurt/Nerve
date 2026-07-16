@@ -22,6 +22,71 @@
   and that model weights are user data governed by their own licences.
 - `npm` package (`@fkkarakurt/nerve`) relicensed to Apache-2.0 to match.
 
+### Added — Nerve is reproducible on every platform
+- **Nerve no longer calls libc's `rand()`.** It could not: `rand()` is
+  implementation-defined and `RAND_MAX` is **32 767** on the Microsoft C runtime
+  against **2 147 483 647** on glibc, so the same seed produced different
+  weights, at different granularity, on Windows and Linux. The library advertised
+  reproducibility while resting on the one facility in the C standard library
+  that cannot provide it — and the Linux and Windows CI jobs were, in effect,
+  testing two different libraries.
+- `nerve.h` now carries **xoshiro128\*\*** (Blackman & Vigna, 2021, *ACM TOMS*
+  47(4)), seeded through SplitMix32. State and arithmetic are 32-bit throughout,
+  emulated in `unsigned long` with explicit masking, so the stream is identical
+  on LP64 Unix and on Windows while the core stays ANSI C89 — which has neither
+  `<stdint.h>` nor a guaranteed 64-bit type.
+- New API: `nerve_seed()`, `nerve_rand_u32()`, `nerve_rand_float()`,
+  `nerve_rand_below()`. Nerve is now **deterministic by default** — the state
+  starts fixed and you opt into variation with `nerve_seed(time(NULL))`.
+- `nerve_rand_below(n)` draws by rejection, correcting the modulo bias that
+  `rand() % n` carried in the internal Fisher-Yates shuffle: 2^32 is not a
+  multiple of most bounds, so low residues came up slightly more often.
+- Examples now seed with `nerve_seed()`. The teaching examples (01-03) use a
+  fixed seed so their printed output reproduces anywhere; `01_xor` accepts a seed
+  argument. The terminal games still vary per run.
+
+### Added — the first test suite
+- **The project had no tests.** `tests/` was removed in `3b44e6b` and never
+  replaced; CI asserted correctness by grepping an example's standard output.
+- `tests/test_nerve.c` — one dependency-free translation unit, no framework,
+  built by the same single `gcc` line as everything else. It:
+  - checks the generator against an **exact-width reference implementation**
+    over 120 000 draws across six seeds, which is what turns "identical on every
+    platform" from a hope into a fact, and pins a **golden vector** so the stream
+    cannot drift silently;
+  - tests `nerve_rand_below` for bias with a chi-square over 700 000 draws;
+  - **verifies the backprop gradients against central finite differences** — the
+    central correctness property of the library, and one that had never been
+    checked;
+  - round-trips both persistence formats and covers `net_copy`, softmax
+    normalisation, and Xavier/He reproducibility and bounds.
+- Runnable three ways: `make test`, `ctest`, or one `gcc` invocation. Added a
+  CTest target to CMake and `test` / `check-c89` targets to the Makefile.
+
+### Fixed — CI was red, and red at random
+- The smoke test compiled `examples/01_xor.c` — which seeded from `time(NULL)` —
+  and counted `OK` in its output. A **CHANGELOG-only commit turned the build
+  red**, because the assertion depended on a random draw from a platform-specific
+  generator. Replaced with the real suite.
+- CI now runs on Linux (GCC **and** Clang), macOS and Windows; under **ASan +
+  UBSan**; and enforces the README's **ANSI C89** claim as a build failure rather
+  than a promise. It also builds `studies/` and the WebAssembly target for the
+  first time — the transformer, autodiff and encoder had never been compiled by
+  CI at all.
+- `-Werror` is on for the compiler that is reproducible locally (GCC/Linux);
+  Clang and macOS run `-Wall -Wextra` until a green run proves their warning set
+  is empty.
+
+### Fixed — documentation and build defects
+- **`net_save`/`net_bsave` were documented with their arguments reversed.** The
+  README showed `net_save(net, "model.net")`; the real signature takes the
+  filename first. Anyone copying the documented call got a compile error.
+- `CMakeLists.txt` declared version 2.0.0 while `nerve.h` said 2.1.0.
+- `studies/mnist/export_mlp.c` ignored every `malloc` and `fread` result and
+  tripped `-Wmisleading-indentation`; rewritten to check them.
+- Added `web/build.sh` so CI and Unix developers build the WebAssembly demo with
+  the same flags as `build.ps1`, instead of the two drifting apart.
+
 ### Fixed — repository and packaging
 - **The documentation site was silently deleted from version control.** A bare
   `web`, `site` and `*.html` rule in `.gitignore` removed `site/index.html` from
