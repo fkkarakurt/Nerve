@@ -24,17 +24,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-latest, name: "GCC / Linux",   cc: gcc,   werror: true  }
-          # No -Werror on the compilers we cannot reproduce locally yet. They
-          # still run -Wall -Wextra, so anything they find shows up in the log;
-          # promote to -Werror once a green run proves the set is empty.
-          - { os: ubuntu-latest, name: "Clang / Linux", cc: clang, werror: false }
-          - { os: macos-latest,  name: "Clang / macOS", cc: cc,    werror: false }
+          - { os: ubuntu-latest, name: "GCC / Linux",   cc: gcc,   werror: true }
+          - { os: ubuntu-latest, name: "Clang / Linux", cc: clang, werror: true }
+          - { os: macos-latest,  name: "Clang / macOS", cc: cc,    werror: true }
     env:
       CC: ${{ matrix.cc }}
       WARN: ${{ matrix.werror && '-Wall -Wextra -pedantic -Werror' || '-Wall -Wextra -pedantic' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Compiler version
         run: $CC --version
@@ -69,7 +66,7 @@ jobs:
     name: ANSI C89 conformance
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: nerve.h must compile as strict C89
         run: |
           set -eux
@@ -84,7 +81,7 @@ jobs:
     name: ASan + UBSan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Test suite under sanitizers
         env:
           UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
@@ -120,7 +117,7 @@ jobs:
       run:
         shell: msys2 {0}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
@@ -147,7 +144,7 @@ jobs:
     name: WebAssembly build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: mymindstorm/setup-emsdk@v14
         with:
           version: 3.1.61

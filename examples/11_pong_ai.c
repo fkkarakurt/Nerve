@@ -239,7 +239,6 @@ static float evaluate(network_t *brain)
     float inp[N_IN], out;
     int match, tick, res, wins = 0;
     float score = 0.0f;
-    int total_rallies = 0;
 
     for (match = 0; match < MATCHES; match++) {
         pong_reset(&g);
@@ -249,10 +248,8 @@ static float evaluate(network_t *brain)
             net_compute(brain, inp, &out);
             res = pong_tick(&g, out, 0.0f);
             if (res != 0) {
-                total_rallies++;
                 if (res == 1) wins++;
                 pong_reset(&g);
-                g.ai_pts = (res == 1) ? g.ai_pts : g.ai_pts;
             }
         }
         score += (float)g.ai_pts - (float)g.bot_pts * 0.5f;
