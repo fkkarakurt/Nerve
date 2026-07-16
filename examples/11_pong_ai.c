@@ -28,6 +28,15 @@
  * Run   : ./pong_ai
  */
 
+/* Ask the C library for the POSIX declarations this example needs (nanosleep,
+ * struct timespec). Under a strict -std=c99 glibc exposes ISO C only, so the
+ * declaration would otherwise be missing and the call would be an implicit
+ * one -- a hard error on Clang 16+ and under -Werror on GCC. This must sit
+ * above every #include, hence its position at the top of the file. */
+#if !defined(_WIN32) && !defined(_POSIX_C_SOURCE)
+#  define _POSIX_C_SOURCE 199309L
+#endif
+
 #define NERVE_IMPLEMENTATION
 #include "../nerve.h"
 
@@ -47,7 +56,14 @@ static void enable_vt100(void) {
 }
 #else
 #  include <unistd.h>
-#  define SLEEP_MS(ms) usleep((unsigned int)((ms)*1000))
+/* usleep() was removed from POSIX.1-2008; nanosleep() is its replacement. */
+static void SLEEP_MS(long ms)
+{
+    struct timespec ts;
+    ts.tv_sec  = (time_t)(ms / 1000);
+    ts.tv_nsec = (long)(ms % 1000) * 1000000L;
+    nanosleep(&ts, NULL);
+}
 static void enable_vt100(void) {}
 #endif
 
