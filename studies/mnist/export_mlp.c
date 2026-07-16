@@ -1,4 +1,21 @@
 /*
+ * Copyright 2022-2026 Fatih Kucukkarakurt <fatihkucukkarakurt@gmail.com>
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*
  * export_mlp.c — train the 784-128-10 MNIST MLP and export its weights as a
  * flat little-endian file the browser can load: the digit recogniser that
  * powers the "draw a number" demo.
@@ -21,14 +38,64 @@
 #define CLS 10
 #define HID 128
 
-static int read_be32(FILE *f){unsigned char b[4];if(fread(b,1,4,f)!=4)return -1;return (b[0]<<24)|(b[1]<<16)|(b[2]<<8)|b[3];}
-static int load_images(const char*p,float**o){FILE*f=fopen(p,"rb");int m,n,r,c,i;unsigned char*b;float*d;if(!f)return -1;
-  m=read_be32(f);n=read_be32(f);r=read_be32(f);c=read_be32(f);if(m!=2051||r*c!=IMG){fclose(f);return -1;}
-  b=(unsigned char*)malloc((size_t)n*IMG);d=(float*)malloc((size_t)n*IMG*sizeof(float));fread(b,1,(size_t)n*IMG,f);fclose(f);
-  for(i=0;i<n*IMG;i++)d[i]=b[i]/255.0f;free(b);*o=d;return n;}
-static int load_labels(const char*p,float**o){FILE*f=fopen(p,"rb");int m,n,i;unsigned char*b;float*d;if(!f)return -1;
-  m=read_be32(f);n=read_be32(f);if(m!=2049){fclose(f);return -1;}b=(unsigned char*)malloc((size_t)n);fread(b,1,(size_t)n,f);fclose(f);
-  d=(float*)calloc((size_t)n*CLS,sizeof(float));for(i=0;i<n;i++)d[i*CLS+b[i]]=1.0f;free(b);*o=d;return n;}
+static int read_be32(FILE *f)
+{
+    unsigned char b[4];
+    if (fread(b, 1, 4, f) != 4) return -1;
+    return (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3];
+}
+
+/* IDX image file: magic 2051, count, rows, cols, then one byte per pixel. */
+static int load_images(const char *p, float **o)
+{
+    FILE *f = fopen(p, "rb");
+    int m, n, r, c, i;
+    unsigned char *b;
+    float *d;
+
+    if (!f) return -1;
+    m = read_be32(f); n = read_be32(f); r = read_be32(f); c = read_be32(f);
+    if (m != 2051 || r * c != IMG) { fclose(f); return -1; }
+
+    b = (unsigned char *)malloc((size_t)n * IMG);
+    d = (float *)malloc((size_t)n * IMG * sizeof(float));
+    if (!b || !d || fread(b, 1, (size_t)n * IMG, f) != (size_t)n * IMG) {
+        free(b); free(d); fclose(f); return -1;
+    }
+    fclose(f);
+
+    for (i = 0; i < n * IMG; i++) d[i] = b[i] / 255.0f;
+    free(b);
+    *o = d;
+    return n;
+}
+
+/* IDX label file: magic 2049, count, then one byte per label. Returned
+ * one-hot, which is the shape net_train_epoch expects. */
+static int load_labels(const char *p, float **o)
+{
+    FILE *f = fopen(p, "rb");
+    int m, n, i;
+    unsigned char *b;
+    float *d;
+
+    if (!f) return -1;
+    m = read_be32(f); n = read_be32(f);
+    if (m != 2049) { fclose(f); return -1; }
+
+    b = (unsigned char *)malloc((size_t)n);
+    if (!b || fread(b, 1, (size_t)n, f) != (size_t)n) {
+        free(b); fclose(f); return -1;
+    }
+    fclose(f);
+
+    d = (float *)calloc((size_t)n * CLS, sizeof(float));
+    if (!d) { free(b); return -1; }
+    for (i = 0; i < n; i++) d[i * CLS + b[i]] = 1.0f;
+    free(b);
+    *o = d;
+    return n;
+}
 
 int main(int argc,char**argv)
 {
@@ -41,7 +108,7 @@ int main(int argc,char**argv)
     if(cap<ntr) ntr=cap;
     printf("train %d test %d epochs %d\n",ntr,nte,epochs);
 
-    srand(42);
+    nerve_seed(42);
     network_t*net=net_allocate(3,IMG,HID,CLS);
     net_set_optimizer(net,NERVENET_OPTIMIZER_ADAM);
     net_set_activation(net,NERVENET_ACTIVATION_RELU);

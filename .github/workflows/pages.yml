@@ -1,0 +1,106 @@
+name: Deploy site
+
+# Publishes two things to GitHub Pages:
+#   /       the documentation site  (web/site/index.html)
+#   /demo/  the live playground     (web/index.html + the WebAssembly build)
+#
+# The model blobs are ~39 MB of converted weights and do not belong in Git.
+# They live as assets on a release tagged by MODELS_TAG below, which this job
+# downloads before building. Create or refresh it with:
+#
+#   gh release create models-v1 --title "Demo model blobs" --notes "..." \
+#     studies/infer/model_q8.nrv studies/infer/nerve.tok \
+#     studies/embed/minilm_q8.nre studies/embed/vocab.txt \
+#     studies/mnist/mnist_mlp.bin
+#
+# Pages must also be enabled once, with "Source: GitHub Actions"
+# (Settings -> Pages, or: gh api -X POST repos/OWNER/REPO/pages \
+#  -f 'build_type=workflow').
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'web/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never let two deploys race; queue instead of cancelling a live publish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  MODELS_TAG: models-v1
+
+jobs:
+  build:
+    name: Build the site
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 3.1.61
+          actions-cache-folder: emsdk-cache
+
+      - name: Fetch the model blobs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eux
+          gh release download "$MODELS_TAG" --repo "$GITHUB_REPOSITORY" --dir web \
+            --pattern 'model_q8.nrv'  \
+            --pattern 'nerve.tok'     \
+            --pattern 'minilm_q8.nre' \
+            --pattern 'vocab.txt'     \
+            --pattern 'mnist_mlp.bin'
+          ls -lh web
+
+      - name: Build WebAssembly
+        run: |
+          set -eux
+          sh web/build.sh
+          ls -lh web/nerve.js web/nerve.wasm web/nerve.data
+
+      - name: Assemble the site
+        run: |
+          set -eux
+          mkdir -p _site/demo
+          cp web/site/index.html _site/index.html
+          cp web/index.html web/nerve.js web/nerve.wasm web/nerve.data _site/demo/
+          cp web/mnist_mlp.bin _site/demo/
+
+          # The docs page links to the playground by its in-repo relative path;
+          # on the published site the playground lives at /demo/.
+          sed -i 's|\.\./web/index\.html|demo/|g' _site/index.html
+
+          # Fail loudly rather than publishing a page with a dead demo link.
+          if grep -q '\.\./web/index\.html' _site/index.html; then
+            echo "demo link rewrite failed" >&2; exit 1
+          fi
+
+          # Large assets are served as-is; skip Jekyll entirely.
+          touch _site/.nojekyll
+          du -sh _site
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    name: Deploy to Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

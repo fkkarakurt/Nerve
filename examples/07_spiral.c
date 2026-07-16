@@ -1,20 +1,19 @@
 /*
  * Nerve — Example 07: Non-linear Spiral Classification
- * Copyright (C) 2022 Fatih Kucukkarakurt <fatihkucukkarakurt@gmail.com>
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * Copyright 2022-2026 Fatih Kucukkarakurt <fatihkucukkarakurt@gmail.com>
+ * SPDX-License-Identifier: Apache-2.0
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  *
  * Classifies three interleaved Archimedean spirals — a canonical
  * benchmark for non-linear separability that no linear model can solve.
@@ -66,9 +65,9 @@ static void gen_spiral(float *inp, float *tgt, int n_per, int n_test,
             r     = theta / (2.5f * PI);
             angle = theta + cls * 2.0f * PI / (float)N_CLS;
             px = r * (float)cos((double)angle) +
-                 noise * (2.0f * ((float)rand()/(float)RAND_MAX) - 1.0f);
+                 noise * (2.0f * (nerve_rand_float()) - 1.0f);
             py = r * (float)sin((double)angle) +
-                 noise * (2.0f * ((float)rand()/(float)RAND_MAX) - 1.0f);
+                 noise * (2.0f * (nerve_rand_float()) - 1.0f);
             inp[(base+i)*N_IN+0] = px;
             inp[(base+i)*N_IN+1] = py;
             tgt[(base+i)*N_OUT+0] = (cls == 0) ? 1.0f : 0.0f;
@@ -82,9 +81,9 @@ static void gen_spiral(float *inp, float *tgt, int n_per, int n_test,
             r     = theta / (2.5f * PI);
             angle = theta + cls * 2.0f * PI / (float)N_CLS;
             px = r * (float)cos((double)angle) +
-                 (noise * 0.5f) * (2.0f * ((float)rand()/(float)RAND_MAX) - 1.0f);
+                 (noise * 0.5f) * (2.0f * (nerve_rand_float()) - 1.0f);
             py = r * (float)sin((double)angle) +
-                 (noise * 0.5f) * (2.0f * ((float)rand()/(float)RAND_MAX) - 1.0f);
+                 (noise * 0.5f) * (2.0f * (nerve_rand_float()) - 1.0f);
             inp[(base+i)*N_IN+0] = px;
             inp[(base+i)*N_IN+1] = py;
             tgt[(base+i)*N_OUT+0] = (cls == 0) ? 1.0f : 0.0f;
@@ -137,7 +136,7 @@ int main(void)
     all_tgt = (float *)malloc((N_TRAIN + N_TEST) * N_OUT * sizeof(float));
     if (!all_in || !all_tgt) { fprintf(stderr, "out of memory\n"); return 1; }
 
-    srand(7);
+    nerve_seed(7);
     gen_spiral(all_in, all_tgt, N_PER_CLASS, N_TEST_CLS, 0.07f);
 
     train_in  = all_in;
@@ -145,7 +144,7 @@ int main(void)
     test_in   = all_in  + N_TRAIN * N_IN;
     test_tgt  = all_tgt + N_TRAIN * N_OUT;
 
-    srand(42);
+    nerve_seed(42);
     net = net_allocate(4, N_IN, 32, 32, N_OUT);
     net_set_optimizer(net,   NERVENET_OPTIMIZER_ADAM);
     net_set_activation(net,  NERVENET_ACTIVATION_RELU);

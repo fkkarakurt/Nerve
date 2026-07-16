@@ -3,44 +3,34 @@
 
 ---
 
-## [2.1.0] — 2026-05-31
-
-First step of the long-game roadmap: Nerve learns to *speak probability
-properly*. Fully backward compatible — existing code keeps its sigmoid + MSE
-behaviour unchanged.
-
-### Added
-- **Softmax output activation** (`NERVENET_ACTIVATION_SOFTMAX`), computed with
-  max-subtraction for numerical stability.
-- **Cross-entropy loss** (`nervenet_loss_t`: `NERVENET_LOSS_MSE`,
-  `NERVENET_LOSS_CROSS_ENTROPY`).
-- **Decoupled output activation** — the output layer is no longer hardcoded to
-  sigmoid. New field `output_activation`.
-- New API:
-  - `net_set_output_activation(net, act)`
-  - `net_set_loss(net, loss)`
-  - `net_set_classification(net)` — one call for the standard softmax +
-    cross-entropy classification setup.
-
-### Changed
-- Output-layer error now carries the correct activation derivative for MSE
-  (reproduces the previous `y(1-y)e` exactly for sigmoid) and collapses to the
-  clean `(t - y)` term for softmax/sigmoid + cross-entropy.
-- Verbose training reports `loss` instead of `MSE` when cross-entropy is active.
-- MNIST study (`studies/mnist`) retrained with softmax + cross-entropy.
-
-### Notes
-- `output_activation` and `loss` are not serialized (same convention as
-  activation/optimizer): re-apply with the setters after `net_load`.
-
-### Verified
-- XOR sigmoid + MSE back-compat: pass.
-- 3-class softmax + cross-entropy: calibrated probabilities (sum to 1).
-- Builds clean under `-std=c89 -Wall -Wextra`.
-
----
-
 ## [Unreleased] — in progress
+
+### Licence — relicensed from GPL-3.0 to Apache-2.0
+- **Nerve is now Apache-2.0.** The previous GPL-3.0 terms made the library
+  unusable for its actual purpose: an embeddable, single-header engine that
+  developers drop into their own products. Apache-2.0 is permissive and carries
+  an express patent grant, which is what commercial and embedded adopters
+  require. Relicensing was clean — Nerve has always been single-author, with no
+  outside contributions to re-license.
+- Every source file now carries an SPDX `Apache-2.0` identifier. Eighteen files
+  previously carried **no licence header at all** — including the inference
+  engine (`nerve_infer.h`), the autodiff engine (`nerve_grad.h`), the sentence
+  encoder (`nerve_embed.h`) and the WebAssembly entry points (`nerve_web.c`).
+  Absent a licence grant those files were legally "all rights reserved"; they
+  are now covered explicitly.
+- Added `NOTICE`, stating that Nerve's source is independent and from-scratch,
+  and that model weights are user data governed by their own licences.
+- `npm` package (`@fkkarakurt/nerve`) relicensed to Apache-2.0 to match.
+
+### Fixed — repository and packaging
+- **The documentation site was silently deleted from version control.** A bare
+  `web`, `site` and `*.html` rule in `.gitignore` removed `site/index.html` from
+  the repository and ignored the entire WebAssembly demo *source* — the demo and
+  docs pages survived only on one developer machine, and could never have been
+  deployed from a clone. The generated artifacts those rules were meant to
+  exclude (`nerve.js`, `nerve.wasm`, `nerve.data`, `*.nrv`, `*.tok`, `*.nre`)
+  were already covered by precise rules; the broad ones only destroyed sources.
+  Restored the docs site to `web/site/index.html` and removed the bad rules.
 
 ### Transformer INFERENCE — the "own your AI, no token tax" artifact
 - `studies/infer/nerve_infer.h` — a single-header, zero-dependency
@@ -125,6 +115,43 @@ behaviour unchanged.
 - `demo_mlp.c` — trains an MLP to 12/12 with **zero hand-written gradients**.
 - `gradcheck.c` — analytic gradients vs central finite differences agree to the
   float floor (~1e-4): **the autodiff is proven correct**.
+
+---
+
+## [2.1.0] — 2026-05-31
+
+First step of the long-game roadmap: Nerve learns to *speak probability
+properly*. Fully backward compatible — existing code keeps its sigmoid + MSE
+behaviour unchanged.
+
+### Added
+- **Softmax output activation** (`NERVENET_ACTIVATION_SOFTMAX`), computed with
+  max-subtraction for numerical stability.
+- **Cross-entropy loss** (`nervenet_loss_t`: `NERVENET_LOSS_MSE`,
+  `NERVENET_LOSS_CROSS_ENTROPY`).
+- **Decoupled output activation** — the output layer is no longer hardcoded to
+  sigmoid. New field `output_activation`.
+- New API:
+  - `net_set_output_activation(net, act)`
+  - `net_set_loss(net, loss)`
+  - `net_set_classification(net)` — one call for the standard softmax +
+    cross-entropy classification setup.
+
+### Changed
+- Output-layer error now carries the correct activation derivative for MSE
+  (reproduces the previous `y(1-y)e` exactly for sigmoid) and collapses to the
+  clean `(t - y)` term for softmax/sigmoid + cross-entropy.
+- Verbose training reports `loss` instead of `MSE` when cross-entropy is active.
+- MNIST study (`studies/mnist`) retrained with softmax + cross-entropy.
+
+### Notes
+- `output_activation` and `loss` are not serialized (same convention as
+  activation/optimizer): re-apply with the setters after `net_load`.
+
+### Verified
+- XOR sigmoid + MSE back-compat: pass.
+- 3-class softmax + cross-entropy: calibrated probabilities (sum to 1).
+- Builds clean under `-std=c89 -Wall -Wextra`.
 
 ---
 

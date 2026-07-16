@@ -1,20 +1,19 @@
 /*
  * nerve.h — Single-header neural network library
- * Copyright (C) 2022 Fatih Kucukkarakurt <fatihkucukkarakurt@gmail.com>
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * Copyright 2022-2026 Fatih Kucukkarakurt <fatihkucukkarakurt@gmail.com>
+ * SPDX-License-Identifier: Apache-2.0
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  *
  * ─────────────────────────────────────────────────────────────────────────
  *
@@ -65,8 +64,8 @@
  *            float tgt[] = {0,   1,   1,   0  };
  *            network_t *net = net_allocate(3, 2, 4, 1);
  *            net_set_optimizer(net, NERVENET_OPTIMIZER_ADAM);
+ *            nerve_seed(42);
  *            net_initialize_xavier(net);
- *            srand(42);
  *            for (int i = 0; i < 5000; i++) {
  *                int j = i % 4;
  *                net_compute(net, in + j*2, NULL);
@@ -193,6 +192,24 @@ extern "C" {
 network_t *net_allocate(int no_of_layers, ...);
 network_t *net_allocate_l(int no_of_layers, const int *arglist);
 void       net_free(network_t *net);
+
+/* Deterministic RNG ─────────────────────────────────────────────────────
+ * Nerve draws every random number from its own generator, never from libc's
+ * rand(). This is a portability requirement, not a preference: rand() is
+ * implementation-defined, and RAND_MAX is 32767 on the Microsoft C runtime
+ * against 2147483647 on glibc — so the same seed produces different weights,
+ * at different granularity, on different platforms. Nerve's generator emits
+ * the same stream on every libc, compiler and target, which is what makes a
+ * run reproducible anywhere — including WebAssembly and bare metal.
+ *
+ * The state is global and starts from a fixed value: Nerve is deterministic
+ * by default, and you opt into variation with nerve_seed(). Calling libc's
+ * srand() has no effect on Nerve.
+ */
+void          nerve_seed(unsigned long seed); /* reseed the global generator */
+unsigned long nerve_rand_u32(void);           /* raw 32-bit draw            */
+float         nerve_rand_float(void);         /* uniform in [0, 1)          */
+unsigned long nerve_rand_below(unsigned long bound); /* uniform in [0,bound) */
 
 /* Initialisation */
 void net_randomize(network_t *net, float range);
@@ -369,6 +386,101 @@ float nerve_score(nerve_t *net, const float *X, const float *y, int n_samples);
 #include <string.h>
 #include <time.h>
 
+/* ── Deterministic RNG — xoshiro128** ─────────────────────────────────────
+ * Blackman & Vigna (2021), "Scrambled Linear Pseudorandom Number Generators",
+ * ACM Trans. Math. Softw. 47(4), 1-32. Seeded through SplitMix32, as the
+ * authors recommend, so that a single small seed still fills the state with
+ * well-mixed bits.
+ *
+ * State and arithmetic are 32-bit throughout: that keeps the stream identical
+ * everywhere and keeps the code inside ANSI C89, which has neither <stdint.h>
+ * nor a guaranteed 64-bit type. `unsigned long` is 32-bit on Windows but
+ * 64-bit on LP64 Unix, so every operation is masked back to 32 bits — without
+ * the mask the two platforms would diverge, which is the very bug this
+ * generator exists to prevent.
+ */
+#define NERVE__U32(x) ((x) & 0xFFFFFFFFUL)
+
+static unsigned long nerve__rng_s[4] = {
+    0x9E3779B9UL, 0x243F6A88UL, 0xB7E15162UL, 0xDEADBEEFUL
+};
+
+static unsigned long nerve__rotl(unsigned long x, int k)
+{
+    return NERVE__U32((x << k) | (NERVE__U32(x) >> (32 - k)));
+}
+
+void nerve_seed(unsigned long seed)
+{
+    int i;
+    unsigned long z = NERVE__U32(seed);
+
+    for (i = 0; i < 4; i++)
+    {
+        unsigned long t;
+        z = NERVE__U32(z + 0x9E3779B9UL);
+        t = z;
+        t = NERVE__U32((t ^ (t >> 16)) * 0x21F0AAADUL);
+        t = NERVE__U32((t ^ (t >> 15)) * 0x735A2D97UL);
+        nerve__rng_s[i] = NERVE__U32(t ^ (t >> 15));
+    }
+
+    /* The all-zero state is this generator's fixed point: it would emit
+     * nothing but zeros forever. SplitMix32 makes it astronomically unlikely,
+     * but the cost of ruling it out is one branch. */
+    if ((nerve__rng_s[0] | nerve__rng_s[1] |
+         nerve__rng_s[2] | nerve__rng_s[3]) == 0UL)
+        nerve__rng_s[0] = 0x9E3779B9UL;
+}
+
+unsigned long nerve_rand_u32(void)
+{
+    unsigned long result =
+        NERVE__U32(nerve__rotl(NERVE__U32(nerve__rng_s[1] * 5UL), 7) * 9UL);
+    unsigned long t = NERVE__U32(nerve__rng_s[1] << 9);
+
+    nerve__rng_s[2] ^= nerve__rng_s[0];
+    nerve__rng_s[3] ^= nerve__rng_s[1];
+    nerve__rng_s[1] ^= nerve__rng_s[2];
+    nerve__rng_s[0] ^= nerve__rng_s[3];
+    nerve__rng_s[2] ^= t;
+    nerve__rng_s[3]  = nerve__rotl(nerve__rng_s[3], 11);
+
+    return result;
+}
+
+float nerve_rand_float(void)
+{
+    /* Take the top 24 bits: a float's mantissa holds exactly that many, so
+     * every draw is representable and the spacing is uniform. */
+    return (float)(nerve_rand_u32() >> 8) * (1.0f / 16777216.0f);
+}
+
+unsigned long nerve_rand_below(unsigned long bound)
+{
+    unsigned long rem, r;
+
+    if (bound <= 1UL) return 0UL;
+    bound = NERVE__U32(bound);
+
+    /* `nerve_rand_u32() % bound` is the obvious spelling and it is biased:
+     * 2^32 is not a multiple of most bounds, so the low residues occur once
+     * more often than the high ones. Reject the short tail instead, which
+     * costs an expected (2^32 mod bound)/2^32 of a redraw — nothing for any
+     * realistic bound — and buys exact uniformity.
+     *
+     * 2^32 itself is unrepresentable where `unsigned long` is 32 bits, so the
+     * count of leftover values is derived from 2^32-1 rather than 2^32. */
+    rem = (0xFFFFFFFFUL % bound) + 1UL;
+    if (rem == bound) rem = 0UL;          /* bound divides 2^32 exactly */
+
+    for (;;)
+    {
+        r = nerve_rand_u32();
+        if (rem == 0UL || r <= 0xFFFFFFFFUL - rem) return r % bound;
+    }
+}
+
 /* ── Sigmoid ──────────────────────────────────────────────────────────── */
 /* Direct computation — avoids the generated lookup table dependency.
  * For peak throughput use the src/ build which includes interpolation.c.  */
@@ -530,7 +642,7 @@ void net_randomize(network_t *net, float range)
         for (nu = 0; nu < net->layer[l].no_of_neurons; nu++)
             for (nl = 0; nl <= net->layer[l - 1].no_of_neurons; nl++)
                 net->layer[l].neuron[nu].weight[nl] =
-                    2.0f * range * ((float)rand() / (float)RAND_MAX - 0.5f);
+                    2.0f * range * (nerve_rand_float() - 0.5f);
 }
 
 void net_initialize_xavier(network_t *net)
@@ -546,7 +658,7 @@ void net_initialize_xavier(network_t *net)
         for (nu = 0; nu < net->layer[l].no_of_neurons; nu++)
             for (nl = 0; nl <= net->layer[l - 1].no_of_neurons; nl++)
                 net->layer[l].neuron[nu].weight[nl] =
-                    2.0f * r * ((float)rand() / (float)RAND_MAX - 0.5f);
+                    2.0f * r * (nerve_rand_float() - 0.5f);
     }
 }
 
@@ -562,7 +674,7 @@ void net_initialize_he(network_t *net)
         for (nu = 0; nu < net->layer[l].no_of_neurons; nu++)
             for (nl = 0; nl <= net->layer[l - 1].no_of_neurons; nl++)
                 net->layer[l].neuron[nu].weight[nl] =
-                    2.0f * r * ((float)rand() / (float)RAND_MAX - 0.5f);
+                    2.0f * r * (nerve_rand_float() - 0.5f);
     }
 }
 
@@ -824,8 +936,7 @@ static void nerve__propagate(layer_t *lower, layer_t *upper, int act,
     for (nu = 0; nu < upper->no_of_neurons; nu++)
     {
         /* Dropout: randomly silence hidden neurons during training */
-        if (dropout > 0.0f &&
-            ((float)rand() / (float)RAND_MAX) < dropout)
+        if (dropout > 0.0f && nerve_rand_float() < dropout)
         {
             upper->neuron[nu].output = 0.0f;
             continue;
@@ -1088,7 +1199,7 @@ float net_train_epoch(network_t *net,
     for (i = 0; i < n_pairs; i++) order[i] = i;
     for (i = n_pairs - 1; i > 0; i--)
     {
-        j = rand() % (i + 1);
+        j = (int)nerve_rand_below((unsigned long)(i + 1));
         tmp = order[i]; order[i] = order[j]; order[j] = tmp;
     }
 
@@ -1193,9 +1304,9 @@ void net_jolt(network_t *net, float factor, float range)
             {
                 float *w = &net->layer[l].neuron[nu].weight[nl];
                 if (fabs(*w) < (double)range)
-                    *w = 2.0f * range * ((float)rand()/(float)RAND_MAX - 0.5f);
+                    *w = 2.0f * range * (nerve_rand_float() - 0.5f);
                 else
-                    *w *= 1.0f + 2.0f*factor*((float)rand()/(float)RAND_MAX - 0.5f);
+                    *w *= 1.0f + 2.0f*factor*(nerve_rand_float() - 0.5f);
             }
 }
 
@@ -1377,8 +1488,8 @@ nerve_t *nerve_new_ex(const char *topology, const nerve_config_t *cfg)
     if (!cfg) { def = nerve_default_config(); cfg = &def; }
     n = nerve__parse_topo(topology, sizes, NERVENET_MAX_LAYERS);
     if (n < 2) return NULL;
-    if (cfg->seed >= 0) srand((unsigned int)cfg->seed);
-    else                srand((unsigned int)time(NULL));
+    if (cfg->seed >= 0) nerve_seed((unsigned long)cfg->seed);
+    else                nerve_seed((unsigned long)time(NULL));
     net = net_allocate_l(n, sizes);
     if (!net) return NULL;
     net_set_optimizer(net,  (nervenet_optimizer_t)cfg->optimizer);

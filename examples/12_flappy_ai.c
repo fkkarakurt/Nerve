@@ -1,20 +1,19 @@
 /*
  * Nerve -- Example 12: Flappy Bird AI (Neuroevolution)
- * Copyright (C) 2022 Fatih Kucukkarakurt <fatihkucukkarakurt@gmail.com>
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * Copyright 2022-2026 Fatih Kucukkarakurt <fatihkucukkarakurt@gmail.com>
+ * SPDX-License-Identifier: Apache-2.0
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  *
  * A population of 20 birds fly simultaneously through scrolling pipes.
  * Survivors breed the next generation via Gaussian-mutation neuroevolution.
@@ -111,7 +110,7 @@ static void add_pipe(void)
 {
     int g;
     if (n_pipes >= MAX_PIPES) return;
-    g = 2 + rand() % (DISP_H - PIPE_GAP - 4);
+    g = 2 + (int)nerve_rand_below(DISP_H - PIPE_GAP - 4);
     pipes[n_pipes].x       = DISP_W - 1;
     pipes[n_pipes].gap_top = g;
     pipes[n_pipes].passed  = 0;
@@ -292,9 +291,9 @@ static void mutate(network_t *net, float rate, float str)
     for (l = 1; l < net->no_of_layers; l++)
         for (nu = 0; nu < net->layer[l].no_of_neurons; nu++)
             for (nl = 0; nl <= net->layer[l-1].no_of_neurons; nl++)
-                if ((float)rand()/(float)RAND_MAX < rate) {
-                    float u = (float)rand()/(float)RAND_MAX + 1e-7f;
-                    float v = (float)rand()/(float)RAND_MAX;
+                if (nerve_rand_float() < rate) {
+                    float u = nerve_rand_float() + 1e-7f;
+                    float v = nerve_rand_float();
                     float z = (float)sqrt(-2.0*log((double)u))
                             * (float)cos(6.28318530718*(double)v);
                     net->layer[l].neuron[nu].weight[nl] += str * z;
@@ -308,7 +307,7 @@ static void crossover(network_t *c, const network_t *p1, const network_t *p2)
         for (nu = 0; nu < c->layer[l].no_of_neurons; nu++)
             for (nl = 0; nl <= c->layer[l-1].no_of_neurons; nl++)
                 c->layer[l].neuron[nu].weight[nl] =
-                    ((float)rand()/(float)RAND_MAX < 0.5f)
+                    (nerve_rand_float() < 0.5f)
                     ? p1->layer[l].neuron[nu].weight[nl]
                     : p2->layer[l].neuron[nu].weight[nl];
 }
@@ -320,7 +319,7 @@ int main(void)
     int sizes[3];
 
     sizes[0] = N_IN; sizes[1] = N_HID; sizes[2] = N_OUT;
-    srand((unsigned int)time(NULL));
+    nerve_seed((unsigned long)time(NULL));
     enable_vt100();
     HIDE();
 
@@ -364,8 +363,8 @@ int main(void)
         qsort(birds, POP, sizeof(Bird), cmp_bird);
 
         for (i = ELITE; i < POP; i++) {
-            p1 = rand() % ELITE;
-            p2 = (rand() % (ELITE - 1) + p1 + 1) % ELITE;
+            p1 = (int)nerve_rand_below(ELITE);
+            p2 = ((int)nerve_rand_below(ELITE - 1) + p1 + 1) % ELITE;
             crossover(birds[i].brain, birds[p1].brain, birds[p2].brain);
             mutate(birds[i].brain, 0.15f, 0.25f);
         }

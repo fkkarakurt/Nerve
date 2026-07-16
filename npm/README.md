@@ -59,4 +59,4 @@ call it from a Web Worker to keep the UI responsive.
 
 ## License
 
-GPL-3.0-or-later — see the main repository.
+Apache-2.0 — see the main repository.

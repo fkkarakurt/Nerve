@@ -17,7 +17,7 @@
     "text-generation", "semantic-search", "zero-dependency"
   ],
   "author": "Fatih Küçükkarakurt",
-  "license": "GPL-3.0-or-later",
+  "license": "Apache-2.0",
   "repository": { "type": "git", "url": "git+https://github.com/fkkarakurt/nerve.git" },
   "homepage": "https://github.com/fkkarakurt/nerve",
   "engines": { "node": ">=18" }

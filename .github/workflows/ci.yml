@@ -5,49 +5,114 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
+
+# A new push supersedes an in-flight run on the same ref.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
-  # ── Linux ──────────────────────────────────────────────────────────────────
-  linux:
-    name: GCC / Linux
+  # ── The suite: correctness first, on every platform we claim to support ────
+  test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, name: "GCC / Linux",   cc: gcc,   werror: true  }
+          # No -Werror on the compilers we cannot reproduce locally yet. They
+          # still run -Wall -Wextra, so anything they find shows up in the log;
+          # promote to -Werror once a green run proves the set is empty.
+          - { os: ubuntu-latest, name: "Clang / Linux", cc: clang, werror: false }
+          - { os: macos-latest,  name: "Clang / macOS", cc: cc,    werror: false }
+    env:
+      CC: ${{ matrix.cc }}
+      WARN: ${{ matrix.werror && '-Wall -Wextra -pedantic -Werror' || '-Wall -Wextra -pedantic' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compiler version
+        run: $CC --version
+
+      - name: Test suite
+        run: |
+          set -eux
+          $CC -O2 -std=c99 $WARN tests/test_nerve.c -o test_nerve -lm
+          ./test_nerve
+
+      - name: Build every example
+        run: |
+          set -eu
+          for f in examples/*.c; do
+            printf '  %-42s' "$f"
+            $CC -O2 -std=c99 $WARN "$f" -o /tmp/nerve_example -lm
+            echo ok
+          done
+
+      - name: Build the studies (transformer, autodiff, encoder, MNIST)
+        run: |
+          set -eu
+          for f in studies/infer/*.c studies/embed/*.c studies/autograd/*.c \
+                   studies/mnist/*.c studies/geotechnical/*.c; do
+            printf '  %-42s' "$f"
+            $CC -O2 -std=c99 -Wall -Wextra -c "$f" -o /tmp/nerve_study.o
+            echo ok
+          done
+
+  # ── The ANSI C claim, enforced rather than asserted ────────────────────────
+  c89:
+    name: ANSI C89 conformance
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Build all examples
+      - name: nerve.h must compile as strict C89
         run: |
-          set -e
-          for f in examples/0[1-9]_*.c examples/1[0-2]_*.c; do
-            printf "  build %-45s" "$f"
-            gcc -O2 -Wall -Wextra -std=c99 -pedantic "$f" -o /tmp/nerve_ex -lm
-            echo "OK"
-          done
+          set -eux
+          # The README advertises ANSI C89 compatibility for the core library.
+          # -std=c89 -pedantic-errors makes that a build failure, not a promise.
+          gcc -O2 -std=c89 -pedantic-errors -Wall -Wextra -Werror \
+              examples/01_xor.c -o xor_c89 -lm
+          ./xor_c89
 
-      - name: XOR convergence smoke test
-        run: |
-          gcc -O2 -std=c99 examples/01_xor.c -o /tmp/xor -lm
-          result=$(/tmp/xor)
-          echo "$result"
-          count=$(echo "$result" | grep -c "OK")
-          [ "$count" -eq 4 ] && echo "XOR: all 4 gates correct" || (echo "FAIL"; exit 1)
-
-  # ── macOS ──────────────────────────────────────────────────────────────────
-  macos:
-    name: Clang / macOS
-    runs-on: macos-latest
+  # ── Undefined behaviour and memory errors ─────────────────────────────────
+  sanitizers:
+    name: ASan + UBSan
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Build all examples
+      - name: Test suite under sanitizers
+        env:
+          UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+          ASAN_OPTIONS: detect_leaks=1
         run: |
-          set -e
-          for f in examples/0[1-9]_*.c examples/1[0-2]_*.c; do
-            printf "  build %-45s" "$f"
-            cc -O2 -Wall -std=c99 "$f" -o /tmp/nerve_ex -lm
-            echo "OK"
+          set -eux
+          gcc -O1 -g -std=c99 -fsanitize=address,undefined \
+              -fno-omit-frame-pointer -fno-sanitize-recover=all \
+              tests/test_nerve.c -o test_asan -lm
+          ./test_asan
+
+      - name: Examples under sanitizers
+        env:
+          UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+          ASAN_OPTIONS: detect_leaks=1
+        run: |
+          set -eux
+          # The terminal games (10-12) render forever and need a TTY, so the
+          # sanitizer pass covers the batch examples only.
+          for f in examples/0*.c; do
+            gcc -O1 -g -std=c99 -fsanitize=address,undefined \
+                -fno-omit-frame-pointer -fno-sanitize-recover=all \
+                "$f" -o /tmp/san_ex -lm
+            /tmp/san_ex > /dev/null
+            echo "  ok $f"
           done
 
-  # ── Windows ────────────────────────────────────────────────────────────────
+  # ── Windows ───────────────────────────────────────────────────────────────
   windows:
     name: GCC / Windows (MSYS2)
     runs-on: windows-latest
@@ -56,26 +121,43 @@ jobs:
         shell: msys2 {0}
     steps:
       - uses: actions/checkout@v4
-
       - uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
           update: true
           install: mingw-w64-x86_64-gcc
 
-      - name: Build all examples
+      - name: Test suite
         run: |
-          set -e
-          for f in examples/0[1-9]_*.c examples/1[0-2]_*.c; do
-            printf "  build %-45s" "$f"
-            gcc -O2 -Wall -std=c99 "$f" -o /tmp/nerve_ex.exe -lm
-            echo "OK"
+          set -eux
+          gcc -O2 -std=c99 -Wall -Wextra -pedantic tests/test_nerve.c -o test_nerve.exe -lm
+          ./test_nerve.exe
+
+      - name: Build every example
+        run: |
+          set -eu
+          for f in examples/*.c; do
+            printf '  %-42s' "$f"
+            gcc -O2 -std=c99 -Wall -Wextra "$f" -o /tmp/nerve_example.exe -lm
+            echo ok
           done
 
-      - name: XOR convergence smoke test
+  # ── The browser build must not rot ────────────────────────────────────────
+  wasm:
+    name: WebAssembly build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 3.1.61
+          actions-cache-folder: emsdk-cache
+
+      - name: Compile the WebAssembly entry points
         run: |
-          gcc -O2 -std=c99 examples/01_xor.c -o /tmp/xor.exe -lm
-          result=$(/tmp/xor.exe)
-          echo "$result"
-          count=$(echo "$result" | grep -c "OK")
-          [ "$count" -eq 4 ] && echo "XOR: all 4 gates correct" || (echo "FAIL"; exit 1)
+          set -eux
+          # Compile only: linking the demo would need the model blobs, which
+          # are release assets rather than repository content. This still
+          # catches the usual rot -- a header change that breaks the browser
+          # target while the native build stays green.
+          emcc -O3 -msimd128 -Wall -Wextra -c web/nerve_web.c -o /tmp/nerve_web.o

@@ -10,7 +10,7 @@
 Zero dependencies. One header. Runs from a microcontroller to a browser tab.*
 
 [![CI](https://github.com/fkkarakurt/nerve/actions/workflows/ci.yml/badge.svg)](https://github.com/fkkarakurt/nerve/actions/workflows/ci.yml)
-[![License: GPL-3.0](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](LICENSE)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Language](https://img.shields.io/badge/Language-C99-orange.svg)](nerve.h)
 [![Single Header](https://img.shields.io/badge/integration-single%20header-purple.svg)](nerve.h)
 [![Zero Deps](https://img.shields.io/badge/dependencies-none-brightgreen.svg)]()
@@ -106,9 +106,11 @@ nerve.index([
 console.log(nerve.search("what keeps me awake?")); // [{ text: "Coffee contains...", score }]
 ```
 
-> **Try it live in your browser** — text generation, on-device learning, semantic
-> search and handwritten-digit recognition, all client-side: *(demo link coming
-> with the docs site)*.
+> ### [▶ Try it live in your browser](https://fkkarakurt.github.io/Nerve/demo/)
+>
+> Text generation, on-device learning, semantic search and handwritten-digit
+> recognition — all running client-side, in your tab. No server, no GPU, no API
+> key, nothing uploaded. [Documentation](https://fkkarakurt.github.io/Nerve/).
 
 ---
 
@@ -152,6 +154,37 @@ for (int i = 0; i < 5000; i++) {
 }
 net_free(net);
 ```
+
+---
+
+## Reproducible by construction
+
+Nerve never calls `rand()`. It carries its own generator — xoshiro128\*\*
+(Blackman & Vigna, 2021), seeded through SplitMix32 — because `rand()` cannot
+give the same answer twice across platforms: it is implementation-defined, and
+`RAND_MAX` is **32 767** on the Microsoft C runtime against **2 147 483 647** on
+glibc. The same seed therefore produces different weights, at different
+granularity, on Windows and Linux.
+
+```c
+nerve_seed(42);                 /* same stream on every libc, compiler, target */
+net_initialize_xavier(net);     /* -> bit-identical weights, everywhere        */
+```
+
+The generator is 32-bit throughout, so it stays inside ANSI C89 and behaves
+identically on a microcontroller, a laptop and a browser tab. Nerve is
+deterministic by default — the state starts fixed, and you opt into variation
+with `nerve_seed(time(NULL))`. `nerve_rand_below(n)` draws an unbiased integer
+in `[0, n)` by rejection, not by a modulo that quietly favours low values.
+
+The test suite checks Nerve's C89 generator against an exact-width reference
+implementation over 120 000 draws, and pins a golden vector so the stream can
+never drift silently.
+
+> Floating-point results still depend on the platform's `libm`: `exp()` and
+> `tanh()` are not correctly rounded by any standard, so training output can
+> differ in the last digits across machines. What Nerve guarantees is that the
+> *random stream* is never the reason two runs disagree.
 
 ---
 
@@ -318,6 +351,11 @@ nerve_free(net);
 <summary><b>Core API</b></summary>
 
 ```c
+/* Determinism */
+nerve_seed(42);                       /* seed the built-in generator      */
+float u = nerve_rand_float();         /* uniform [0,1)                    */
+unsigned long k = nerve_rand_below(10); /* unbiased integer in [0,10)     */
+
 /* Allocate */
 network_t *net = net_allocate(3, 64, 128, 10);
 net_free(net);
@@ -349,9 +387,9 @@ float acc   = net_compute_accuracy(net, inputs, targets, n, n_in, n_out);
 int cm[9] = {0};
 net_confusion_matrix(net, inputs, targets, n, n_in, n_out, 3, cm);
 
-/* Persist */
-net_save(net,  "model.net");   network_t *net = net_load("model.net");
-net_bsave(net, "model.bin");   network_t *net = net_bload("model.bin");
+/* Persist — filename first, then the network */
+net_save("model.net",  net);   network_t *net = net_load("model.net");
+net_bsave("model.bin", net);   network_t *net = net_bload("model.bin");
 ```
 
 > After loading, re-apply `net_set_activation()` and `net_set_optimizer()`.
@@ -375,6 +413,20 @@ cmake -B build && cmake --build build
 # Individual example
 gcc -O2 examples/01_xor.c -o xor -lm
 ```
+
+## Tests
+
+```bash
+gcc -O2 -std=c99 -Wall -Wextra tests/test_nerve.c -o test_nerve -lm && ./test_nerve
+```
+
+One file, no framework, no dependencies — the same one-line build as everything
+else here. It checks the generator against a reference implementation, verifies
+the backprop gradients against central finite differences, and round-trips every
+persistence format. CI runs it on Linux (GCC and Clang), macOS and Windows, under
+ASan + UBSan, and separately enforces that the core still compiles as strict
+ANSI C89 — the standards claim above is a build failure if it ever stops being
+true, not a line of marketing.
 
 ## Academic foundations
 
@@ -401,6 +453,8 @@ readability, portability and reproducibility, not new science.
 
 ## License
 
-Copyright (C) 2026 Fatih Küçükkarakurt
+Copyright 2022-2026 Fatih Küçükkarakurt
 
-Released under the [GNU General Public License v3.0](LICENSE).
+Released under the [Apache License 2.0](LICENSE) — permissive, with an express
+patent grant. Embed it in commercial and closed-source products; keep the
+notice, and it's yours to ship.

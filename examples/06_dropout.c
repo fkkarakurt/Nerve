@@ -1,20 +1,19 @@
 /*
  * Nerve — Example 06: Dropout Regularisation
- * Copyright (C) 2022 Fatih Kucukkarakurt <fatihkucukkarakurt@gmail.com>
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * Copyright 2022-2026 Fatih Kucukkarakurt <fatihkucukkarakurt@gmail.com>
+ * SPDX-License-Identifier: Apache-2.0
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  *
  * Demonstrates how dropout prevents memorisation of label noise.
  *
@@ -50,7 +49,7 @@
 static int true_label(float x, float y)
 { return ((x*x + y*y) < RADIUS*RADIUS) ? 0 : 1; }
 
-static float randf(void) { return 2.0f * ((float)rand()/(float)RAND_MAX) - 1.0f; }
+static float randf(void) { return 2.0f * (nerve_rand_float()) - 1.0f; }
 
 static float accuracy(network_t *net,
                       const float *in, const float *tgt, int n)
@@ -67,7 +66,7 @@ int main(void)
     int        i, lbl, flipped, epoch;
 
     /* Build training set: 30 correct + 10 with flipped labels */
-    srand(77);
+    nerve_seed(77);
     flipped = 0;
     for (i = 0; i < N_TRAIN; i++) {
         float x = randf(), y = randf();
@@ -81,7 +80,7 @@ int main(void)
     }
 
     /* Build clean test set on a uniform grid */
-    srand(55);
+    nerve_seed(55);
     for (i = 0; i < N_TEST; i++) {
         float x = randf(), y = randf();
         test_in[i*2+0] = x;
@@ -92,14 +91,14 @@ int main(void)
     }
 
     /* Both networks get identical Xavier init */
-    srand(42);
+    nerve_seed(42);
     net_plain = net_allocate(4, 2, 128, 128, 2);
     net_set_optimizer(net_plain,  NERVENET_OPTIMIZER_ADAM);
     net_set_activation(net_plain, NERVENET_ACTIVATION_RELU);
     net_initialize_he(net_plain);
     net_set_learning_rate(net_plain, 0.001f);
 
-    srand(42);
+    nerve_seed(42);
     net_drop = net_allocate(4, 2, 128, 128, 2);
     net_set_optimizer(net_drop,  NERVENET_OPTIMIZER_ADAM);
     net_set_activation(net_drop, NERVENET_ACTIVATION_RELU);

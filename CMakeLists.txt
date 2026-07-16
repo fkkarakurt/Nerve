@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.14)
 project(nerve
-    VERSION 2.0.0
-    DESCRIPTION "Zero-dependency multilayer perceptron in ANSI C"
+    # Keep in step with NERVENET_VERSION in nerve.h.
+    VERSION 2.1.0
+    DESCRIPTION "Zero-dependency neural networks in a single ANSI C header"
     LANGUAGES C
 )
 
@@ -14,6 +15,7 @@ set(CMAKE_C_EXTENSIONS OFF)
 # --------------------------------------------------------------------------
 option(NERVE_BUILD_EXAMPLES "Build all examples"       ON)
 option(NERVE_BUILD_GAMES    "Build terminal AI games"  ON)
+option(NERVE_BUILD_TESTS    "Build the test suite"     ON)
 
 # --------------------------------------------------------------------------
 # Header-only interface target  (the canonical usage)
@@ -47,6 +49,16 @@ endif()
 # --------------------------------------------------------------------------
 if(NERVE_BUILD_EXAMPLES OR NERVE_BUILD_GAMES)
     add_subdirectory(examples)
+endif()
+
+# --------------------------------------------------------------------------
+# Tests  (ctest --test-dir build)
+# --------------------------------------------------------------------------
+if(NERVE_BUILD_TESTS AND CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    enable_testing()
+    add_executable(test_nerve tests/test_nerve.c)
+    target_link_libraries(test_nerve PRIVATE nerve::nerve)
+    add_test(NAME nerve_core COMMAND test_nerve)
 endif()
 
 # --------------------------------------------------------------------------
