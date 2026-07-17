@@ -294,10 +294,11 @@ int nerve_embed_load(nerve_embed_t *m, const char *model_path, const char *vocab
     nerve_embed_config *c = &m->cfg;
     if (!f) return -1;
     if (fread(magic, 1, 4, f) != 4 || memcmp(magic, "NEMB", 4)) { fclose(f); return -2; }
-    fread(&ver, 4, 1, f);
-    fread(&c->hidden, 4, 1, f); fread(&c->n_layers, 4, 1, f); fread(&c->n_heads, 4, 1, f);
-    fread(&c->intermediate, 4, 1, f); fread(&c->vocab, 4, 1, f); fread(&c->max_pos, 4, 1, f);
-    c->quantized = 0; fread(&c->quantized, 4, 1, f);   /* 0 for legacy fp32 (pad was zero) */
+    c->quantized = 0;   /* 0 for legacy fp32 (pad was zero) */
+    if (fread(&ver, 4, 1, f) != 1 ||
+        fread(&c->hidden, 4, 1, f) != 1 || fread(&c->n_layers, 4, 1, f) != 1 || fread(&c->n_heads, 4, 1, f) != 1 ||
+        fread(&c->intermediate, 4, 1, f) != 1 || fread(&c->vocab, 4, 1, f) != 1 || fread(&c->max_pos, 4, 1, f) != 1 ||
+        fread(&c->quantized, 4, 1, f) != 1) { fclose(f); return -2; }
     fseek(f, 0, SEEK_END); bytes = ftell(f) - 64; fseek(f, 64, SEEK_SET);
     m->data = (float *)malloc((size_t)bytes);
     if (fread(m->data, 1, (size_t)bytes, f) != (size_t)bytes) { fclose(f); return -3; }

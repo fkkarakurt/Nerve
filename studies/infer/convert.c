@@ -144,7 +144,7 @@ int main(int argc, char **argv)
         int max_len, len;
         float score;
         char *sbuf;
-        fread(&max_len, sizeof(int), 1, f);
+        if (fread(&max_len, sizeof(int), 1, f) != 1) { fprintf(stderr, "bad tokenizer header\n"); return 1; }
         fwrite(NTK_MAGIC, 1, 4, o);
         fwrite(&version, sizeof(int), 1, o);
         fwrite(&vocab, sizeof(int), 1, o);
@@ -153,7 +153,7 @@ int main(int argc, char **argv)
         for (i = 0; i < vocab; i++) {
             if (fread(&score, sizeof(float), 1, f) != 1 ||
                 fread(&len, sizeof(int), 1, f) != 1) { fprintf(stderr, "bad vocab\n"); return 1; }
-            fread(sbuf, 1, (size_t)len, f);
+            if (fread(sbuf, 1, (size_t)len, f) != (size_t)len) { fprintf(stderr, "bad vocab\n"); return 1; }
             fwrite(&score, sizeof(float), 1, o);
             fwrite(&len, sizeof(int), 1, o);
             fwrite(sbuf, 1, (size_t)len, o);

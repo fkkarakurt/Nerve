@@ -77,7 +77,10 @@ static int load_images(const char *path, float **out)
     }
     buf  = (unsigned char *)malloc((size_t)n * IMG);
     data = (float *)malloc((size_t)n * IMG * sizeof(float));
-    fread(buf, 1, (size_t)n * IMG, f);
+    if (fread(buf, 1, (size_t)n * IMG, f) != (size_t)n * IMG) {
+        fprintf(stderr, "ERROR: truncated image file %s\n", path);
+        free(buf); free(data); fclose(f); return -1;
+    }
     fclose(f);
     for (i = 0; i < n * IMG; i++) data[i] = buf[i] / 255.0f;
     free(buf);
@@ -98,7 +101,10 @@ static int load_labels(const char *path, float **out, int *raw)
         fprintf(stderr, "ERROR: bad label file %s\n", path); fclose(f); return -1;
     }
     buf  = (unsigned char *)malloc((size_t)n);
-    fread(buf, 1, (size_t)n, f);
+    if (fread(buf, 1, (size_t)n, f) != (size_t)n) {
+        fprintf(stderr, "ERROR: truncated label file %s\n", path);
+        free(buf); fclose(f); return -1;
+    }
     fclose(f);
     data = (float *)calloc((size_t)n * CLS, sizeof(float));
     for (i = 0; i < n; i++) {

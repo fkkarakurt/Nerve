@@ -57,7 +57,7 @@ jobs:
           for f in studies/infer/*.c studies/embed/*.c studies/autograd/*.c \
                    studies/mnist/*.c studies/geotechnical/*.c; do
             printf '  %-42s' "$f"
-            $CC -O2 -std=c99 -Wall -Wextra -c "$f" -o /tmp/nerve_study.o
+            $CC -O2 -std=c99 $WARN -c "$f" -o /tmp/nerve_study.o
             echo ok
           done
 

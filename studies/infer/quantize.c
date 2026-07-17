@@ -77,12 +77,14 @@ int main(int argc, char **argv)
 
     f = fopen(in, "rb");
     if (!f) { fprintf(stderr, "cannot open %s\n", in); return 1; }
-    fread(magic, 1, 4, f);
+    if (fread(magic, 1, 4, f) != 4) { fprintf(stderr, "short read (header)\n"); return 1; }
     if (memcmp(magic, "NRV1", 4) != 0) { fprintf(stderr, "not a NRV1 model\n"); return 1; }
-    fread(&version, 4, 1, f);
-    fread(&dim, 4, 1, f); fread(&hid, 4, 1, f); fread(&L, 4, 1, f);
-    fread(&heads, 4, 1, f); fread(&kvh, 4, 1, f); fread(&voc, 4, 1, f);
-    fread(&seq, 4, 1, f); fread(&flags, 4, 1, f); fread(&rope, 4, 1, f);
+    if (fread(&version, 4, 1, f) != 1 ||
+        fread(&dim, 4, 1, f) != 1 || fread(&hid, 4, 1, f) != 1 || fread(&L, 4, 1, f) != 1 ||
+        fread(&heads, 4, 1, f) != 1 || fread(&kvh, 4, 1, f) != 1 || fread(&voc, 4, 1, f) != 1 ||
+        fread(&seq, 4, 1, f) != 1 || fread(&flags, 4, 1, f) != 1 || fread(&rope, 4, 1, f) != 1) {
+        fprintf(stderr, "short read (header)\n"); return 1;
+    }
     shared = flags & 1;
     if (flags & 2) { fprintf(stderr, "already quantized\n"); return 1; }
     hs = dim / heads; kvd = (long)kvh * hs;
