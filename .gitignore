@@ -147,6 +147,11 @@ run_log.txt
 # -- Internal / not-public ------------------------------------------------------
 ROADMAP.md
 
+# -- Geotechnical discovery datasets (real-data experiments; kept private) ------
+# Discovery work on real data and any resulting equations stay off the public
+# repo by design. Never force-add anything under here.
+studies/geotechnical/dataset/
+
 # -- Obsolete assets ------------------------------------------------------------
 structure.png
 
