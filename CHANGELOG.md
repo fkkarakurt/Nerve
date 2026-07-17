@@ -5,6 +5,22 @@
 
 ## [Unreleased] — in progress
 
+### Added — `nerve_discover.h`: symbolic regression in one header
+- **New single-header library: give it data, get back an equation.**
+  `nerve_discover.h` discovers a compact, human-readable closed-form formula from
+  `(x, y)` samples — genetic programming over expression trees, with a parsimony
+  pressure so the answer stays as small as a real law should be, linear scaling
+  (Keijzer 2003) so each candidate finds its best `a·f(x)+b` for free, and a
+  numerical-gradient polish that recovers real constants. Zero dependencies beyond
+  libm; drop it in and `#include` it, the way you already use `nerve.h`. Runs
+  wherever C compiles, including the browser via WebAssembly.
+- API: `nd_fit`, `nd_eval`, `nd_r2`, `nd_print`, `nd_num_nodes`, `nd_free`,
+  `nd_defaults`; deterministic (seeded). `studies/discover/discover.c` rediscovers
+  the inverse-square law `F = m1·m2/r²` and Kepler's `T = √(a³)` from noisy samples
+  to R² > 0.99 in a handful of nodes.
+- The `studies/discover` demos now build under the same `-Wall -Wextra -pedantic
+  -Werror` bar as the rest of the suite in CI.
+
 ### Licence — relicensed from GPL-3.0 to Apache-2.0
 - **Nerve is now Apache-2.0.** The previous GPL-3.0 terms made the library
   unusable for its actual purpose: an embeddable, single-header engine that
