@@ -14,6 +14,16 @@ games:
 test:
 	$(CC) $(CFLAGS) tests/test_nerve.c -o tests/test_nerve -lm
 	./tests/test_nerve
+	$(CC) $(CFLAGS) tests/test_discover.c -o tests/test_discover -lm
+	./tests/test_discover
+
+# The equation-discovery figure in the README, reproduced. `bench-quick` is the
+# twelve-equation smoke test; `bench` is the full sweep and takes minutes.
+bench-quick:
+	$(MAKE) -C bench/feynman quick
+
+bench:
+	$(MAKE) -C bench/feynman full
 
 # The ANSI C89 claim in the README, enforced.
 check-c89:
@@ -23,6 +33,8 @@ check-c89:
 
 clean:
 	$(MAKE) -C examples clean
+	$(MAKE) -C bench/feynman clean
 	rm -f tests/test_nerve tests/test_nerve.exe tests/nerve_c89 tests/nerve_c89.exe
+	rm -f tests/test_discover tests/test_discover.exe
 
-.PHONY: all games test check-c89 clean
+.PHONY: all games test bench bench-quick check-c89 clean

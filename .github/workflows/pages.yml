@@ -1,8 +1,9 @@
 name: Deploy site
 
-# Publishes two things to GitHub Pages:
-#   /       the documentation site  (web/site/index.html)
-#   /demo/  the live playground     (web/index.html + the WebAssembly build)
+# Publishes three things to GitHub Pages:
+#   /          the documentation site  (web/site/index.html)
+#   /demo/     the live playground     (web/index.html + the WebAssembly build)
+#   /discover/ the equation discoverer (web/discover/ - no model blobs at all)
 #
 # The model blobs are ~39 MB of converted weights and do not belong in Git.
 # They live as assets on a release tagged by MODELS_TAG below, which this job
@@ -69,21 +70,47 @@ jobs:
           sh web/build.sh
           ls -lh web/nerve.js web/nerve.wasm web/nerve.data
 
+      - name: Build the equation discoverer
+        run: |
+          set -eux
+          # Nothing to download for this one: the engine carries no weights,
+          # so the module is the whole demo.
+          sh web/discover/build.sh
+          ls -lh web/discover/nerve_discover.js web/discover/nerve_discover.wasm
+
       - name: Assemble the site
         run: |
           set -eux
-          mkdir -p _site/demo
+          mkdir -p _site/demo _site/discover
           cp web/site/index.html _site/index.html
           cp web/index.html web/nerve.js web/nerve.wasm web/nerve.data _site/demo/
           cp web/mnist_mlp.bin _site/demo/
+          cp web/discover/index.html            _site/discover/
+          cp web/discover/worker.js             _site/discover/
+          cp web/discover/nerve_discover.js     _site/discover/
+          cp web/discover/nerve_discover.wasm   _site/discover/
 
-          # The docs page links to the playground by its in-repo relative path;
-          # on the published site the playground lives at /demo/.
-          sed -i 's|\.\./web/index\.html|demo/|g' _site/index.html
+          # In the repository the discoverer links back to ../index.html, which
+          # is the playground; on the published site that is /demo/.
+          sed -i 's|href="\.\./index\.html"|href="../demo/"|' _site/discover/index.html
+
+          # The docs page links to the demos by their in-repo relative paths;
+          # on the published site they live at /demo/ and /discover/.
+          sed -i 's|\.\./web/discover/index\.html|discover/|g' _site/index.html
+          sed -i 's|\.\./web/index\.html|demo/|g'              _site/index.html
+
+          # The playground sits at /demo/, so its sibling link needs one more
+          # level than it does in the repository.
+          sed -i 's|href="discover/index\.html"|href="../discover/"|' _site/demo/index.html
 
           # Fail loudly rather than publishing a page with a dead demo link.
-          if grep -q '\.\./web/index\.html' _site/index.html; then
-            echo "demo link rewrite failed" >&2; exit 1
+          for pattern in '\.\./web/index\.html' '\.\./web/discover/index\.html'; do
+            if grep -q "$pattern" _site/index.html; then
+              echo "demo link rewrite failed: $pattern" >&2; exit 1
+            fi
+          done
+          if grep -q 'href="discover/index\.html"' _site/demo/index.html; then
+            echo "playground link rewrite failed" >&2; exit 1
           fi
 
           # Large assets are served as-is; skip Jekyll entirely.

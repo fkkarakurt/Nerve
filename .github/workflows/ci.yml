@@ -42,6 +42,21 @@ jobs:
           $CC -O2 -std=c99 $WARN tests/test_nerve.c -o test_nerve -lm
           ./test_nerve
 
+      - name: Equation discovery test suite
+        run: |
+          set -eux
+          $CC -O2 -std=c99 $WARN tests/test_discover.c -o test_discover -lm
+          ./test_discover
+
+      - name: Feynman benchmark (smoke test)
+        run: |
+          set -eux
+          # The full 100-equation sweep takes minutes; CI runs the twelve-
+          # equation subset, which is enough to catch a broken engine.
+          $CC -O2 -std=c99 $WARN bench/feynman/equations.c bench/feynman/feynman.c \
+              -o feynman -lm
+          ./feynman --quick
+
       - name: Build every example
         run: |
           set -eu
@@ -92,6 +107,20 @@ jobs:
               -fno-omit-frame-pointer -fno-sanitize-recover=all \
               tests/test_nerve.c -o test_asan -lm
           ./test_asan
+
+      - name: Equation discovery under sanitizers
+        env:
+          UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+          ASAN_OPTIONS: detect_leaks=1
+        run: |
+          set -eux
+          # nerve_discover.h allocates and frees expression trees by the
+          # million, so a leak or a double free has somewhere to hide. This is
+          # where it does not.
+          gcc -O1 -g -std=c99 -fsanitize=address,undefined \
+              -fno-omit-frame-pointer -fno-sanitize-recover=all \
+              tests/test_discover.c -o discover_asan -lm
+          ./discover_asan
 
       - name: Examples under sanitizers
         env:
@@ -158,3 +187,46 @@ jobs:
           # catches the usual rot -- a header change that breaks the browser
           # target while the native build stays green.
           emcc -O3 -msimd128 -Wall -Wextra -c web/nerve_web.c -o /tmp/nerve_web.o
+
+      - name: Link the equation-discovery demo, and watch its size
+        run: |
+          set -eux
+          # This one links all the way: an equation discoverer has no weights
+          # to load, so the whole demo is the module itself. That also makes
+          # its size a number worth keeping honest.
+          cd web/discover
+          emcc discover_web.c -O3 -Wall -Wextra -o nerve_discover.js \
+            -sMODULARIZE=1 \
+            -sEXPORT_NAME=createNerveDiscover \
+            -sENVIRONMENT=worker \
+            -sEXPORTED_FUNCTIONS=_main,_ndw_load_csv,_ndw_run,_ndw_error,_ndw_rows,_ndw_vars,_ndw_var_name \
+            -sEXPORTED_RUNTIME_METHODS=ccall,cwrap,UTF8ToString \
+            -sALLOW_MEMORY_GROWTH=1 \
+            -sINITIAL_MEMORY=33554432 \
+            -lm
+          ls -l nerve_discover.js nerve_discover.wasm
+          # The pitch is "a few tens of kilobytes". Fail if that stops being true.
+          test "$(stat -c%s nerve_discover.wasm)" -lt 160000
+
+      - name: Link the npm entry point, and prove it runs under Node
+        run: |
+          set -eux
+          emcc npm/nerve_discover.c -O3 -Wall -Wextra -o npm/discover.mjs \
+            -sMODULARIZE=1 -sEXPORT_ES6=1 -sEXPORT_NAME=createDiscover \
+            -sENVIRONMENT=web,node \
+            -sEXPORTED_FUNCTIONS=_main,_malloc,_free,_nd_json_fit,_nd_json_version \
+            -sEXPORTED_RUNTIME_METHODS=ccall,cwrap,HEAPF64,lengthBytesUTF8,stringToUTF8 \
+            -sALLOW_MEMORY_GROWTH=1 -lm
+          # The published API is worth more than the fact that it compiled:
+          # discover Kepler's third law from the real planets and check it.
+          node --input-type=module -e '
+            const { load, Ops } = await import("./npm/discover.js");
+            const d = await load();
+            const csv = "a,T\n0.387,0.2408\n0.723,0.6152\n1.000,1.0000\n" +
+                        "1.524,1.8808\n5.204,11.862\n9.583,29.457\n" +
+                        "19.191,84.016\n30.070,164.79\n39.482,247.94";
+            const { knee, front } = d.fromTable(csv, { ops: Ops.ALGEBRA });
+            console.log(knee.equation, knee.r2);
+            if (!(knee.r2 > 0.999)) { console.error("Kepler not recovered"); process.exit(1); }
+            if (!(front.length > 1)) { console.error("no front"); process.exit(1); }
+          '
