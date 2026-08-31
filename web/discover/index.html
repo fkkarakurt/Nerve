@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nerve Discover — paste data, get the equation</title>
+<style>
+  :root{--bg:#070b14;--fg:#e8eef7;--mut:#7d8aa5;--line:#1d2740;--acc:#36f1cd;--acc2:#7aa2ff;--violet:#b388ff;--err:#ff7b88;--card:rgba(20,28,48,.7);}
+  *{box-sizing:border-box;} html,body{margin:0;height:100%;}
+  body{background:radial-gradient(1100px 560px at 85% -10%,rgba(122,162,255,.16),transparent 60%),radial-gradient(820px 460px at -10% 0%,rgba(54,241,205,.12),transparent 55%),radial-gradient(680px 680px at 50% 130%,rgba(179,136,255,.12),transparent 60%),var(--bg);color:var(--fg);font:15px/1.6 ui-sans-serif,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;min-height:100vh;display:flex;flex-direction:column;}
+  .mono{font-family:ui-monospace,Menlo,Consolas,monospace;}
+  header{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:18px;padding:12px 22px;background:rgba(7,11,20,.78);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);flex-wrap:wrap;}
+  .brand{font-weight:800;font-size:20px;letter-spacing:-.02em;display:flex;align-items:center;gap:8px;}
+  .brand .spark{color:var(--acc);text-shadow:0 0 12px var(--acc);}
+  .brand b{background:linear-gradient(92deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .navstat{margin-left:auto;display:flex;align-items:center;gap:12px;color:var(--mut);font-size:12px;}
+  .navstat a{color:var(--acc2);font-weight:600;text-decoration:none;}
+  .dotlive{width:8px;height:8px;border-radius:50%;background:var(--acc);box-shadow:0 0 10px var(--acc);animation:pulse 1.6s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  main{flex:1;display:flex;justify-content:center;padding:24px 16px;}
+  .wrap{width:100%;max-width:1000px;}
+  .eyebrow{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--acc2);margin:0 0 4px;}
+  .lead{font-size:27px;font-weight:800;margin:0 0 6px;letter-spacing:-.015em;} .lead i{color:var(--acc);font-style:normal;}
+  .hint{color:var(--mut);font-size:14px;margin:0 0 18px;max-width:70ch;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.35);margin-bottom:16px;}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  textarea{width:100%;background:#0a1120;color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:11px;font-size:13px;resize:vertical;min-height:190px;font-family:ui-monospace,Menlo,Consolas,monospace;}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px;}
+  .chip{font-size:13px;color:#bcd;background:#0c1426;border:1px solid var(--line);border-radius:999px;padding:5px 11px;cursor:pointer;transition:.15s;user-select:none;}
+  .chip:hover{border-color:var(--acc2);color:#fff;} .chip.on{border-color:var(--acc);color:#fff;box-shadow:0 0 0 1px var(--acc) inset;}
+  .row{display:flex;gap:16px;align-items:center;margin:10px 0;flex-wrap:wrap;}
+  label{color:var(--mut);font-size:13px;display:flex;align-items:center;gap:6px;}
+  label input[type=number]{width:74px;background:#0a1120;color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:5px 7px;font-size:13px;}
+  button{background:linear-gradient(92deg,var(--acc),var(--acc2));color:#04130f;border:0;border-radius:10px;padding:11px 22px;font-size:15px;font-weight:700;cursor:pointer;transition:.15s;}
+  button:hover:not(:disabled){filter:brightness(1.08);box-shadow:0 0 22px rgba(54,241,205,.3);}
+  button:disabled{background:#1a2238;color:var(--mut);cursor:default;}
+  .eqbox{background:#0a1120;border:1px solid var(--line);border-radius:12px;padding:16px;min-height:74px;display:flex;align-items:center;}
+  .eq{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:17px;line-height:1.5;word-break:break-word;color:var(--acc);}
+  .eq.small{font-size:14px;color:var(--fg);}
+  .track{height:7px;background:#0c1426;border-radius:6px;overflow:hidden;margin:12px 0 6px;}
+  .fill{height:100%;width:0;background:linear-gradient(92deg,var(--acc),var(--acc2));border-radius:6px;transition:width .12s linear;}
+  .meta{display:flex;justify-content:space-between;color:var(--mut);font-size:12px;gap:12px;flex-wrap:wrap;}
+  .meta b{color:var(--acc);font-weight:700;}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  th{text-align:left;color:var(--mut);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.08em;padding:6px 8px;border-bottom:1px solid var(--line);}
+  td{padding:7px 8px;border-bottom:1px solid rgba(29,39,64,.5);vertical-align:top;}
+  tr.knee td{background:rgba(54,241,205,.07);}
+  tr.knee td:first-child{box-shadow:inset 2px 0 0 var(--acc);}
+  td.n{color:var(--mut);white-space:nowrap;} td.r{color:var(--acc2);white-space:nowrap;font-variant-numeric:tabular-nums;}
+  td.f{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;word-break:break-word;}
+  .status{font-size:13px;color:var(--mut);margin-top:10px;} .status.err{color:var(--err);}
+  .tag{display:inline-block;font-size:11px;color:var(--violet);border:1px solid rgba(179,136,255,.35);border-radius:999px;padding:1px 9px;margin-left:8px;vertical-align:middle;}
+  footer{text-align:center;color:var(--mut);font-size:12.5px;padding:18px;border-top:1px solid var(--line);}
+  footer b{color:var(--acc);}
+  @media(max-width:760px){.cols{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><span class="spark">⚡</span> <b>Nerve</b> Discover</div>
+  <div class="navstat">
+    <a href="../index.html">← Demo</a>
+    <a href="https://github.com/fkkarakurt/nerve" target="_blank" rel="noopener">GitHub</a>
+    <span class="dotlive"></span><span id="boot">loading engine…</span>
+  </div>
+</header>
+
+<main><div class="wrap">
+
+  <p class="eyebrow">symbolic regression · webassembly</p>
+  <h1 class="lead">Give it numbers. Get back an <i>equation</i>.</h1>
+  <p class="hint">
+    Not a prediction, not a set of weights — a formula you can read, check
+    against theory and evaluate forever after in nanoseconds. There is no model
+    to download here: equation discovery is pure algorithm, so the whole engine
+    is a WebAssembly module of a few tens of kilobytes. Your data never leaves
+    this tab.
+  </p>
+
+  <div class="cols">
+    <div class="card">
+      <p class="eyebrow" style="margin-bottom:8px">1 · the data</p>
+      <div class="chips" id="samples"></div>
+      <textarea id="csv" spellcheck="false"></textarea>
+      <p class="status" id="datainfo">Inputs in the first columns, the value to
+        explain in the last. A header row names the variables.</p>
+    </div>
+
+    <div class="card">
+      <p class="eyebrow" style="margin-bottom:8px">2 · what it may use</p>
+      <div class="chips" id="ops"></div>
+      <p class="status">Fewer operators, smaller haystack. Keep it algebraic
+        unless the thing you are modelling really oscillates or decays.</p>
+      <div class="row" style="margin-top:14px">
+        <label>generations <input type="number" id="gens" value="250" min="20" max="2000" step="10"></label>
+        <label>max nodes <input type="number" id="nodes" value="22" min="5" max="60"></label>
+        <label>seed <input type="number" id="seed" value="1" min="1"></label>
+      </div>
+      <div class="row">
+        <button id="go" disabled>Discover the equation</button>
+        <span class="status" id="status"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <p class="eyebrow" style="margin-bottom:8px">3 · the search, live</p>
+    <div class="eqbox"><span class="eq" id="live">—</span></div>
+    <div class="track"><div class="fill" id="bar"></div></div>
+    <div class="meta">
+      <span>generation <b id="gen">0</b> / <span id="gentot">0</span></span>
+      <span>normalised error <b id="err">—</b></span>
+      <span>nodes <b id="nnodes">—</b></span>
+      <span id="timing"></span>
+    </div>
+  </div>
+
+  <div class="card" id="frontcard" style="display:none">
+    <p class="eyebrow" style="margin-bottom:8px">4 · the accuracy / complexity front
+      <span class="tag">the highlighted row is the knee</span></p>
+    <table>
+      <thead><tr><th style="width:70px">nodes</th><th style="width:110px">R²</th><th>equation</th></tr></thead>
+      <tbody id="front"></tbody>
+    </table>
+    <p class="status">Every row is the best equation the search found at that
+      size. Reading down, you can see exactly what each extra term bought — and
+      where it stops buying anything.</p>
+  </div>
+
+</div></main>
+
+<footer>
+  <b>Nerve</b> — the modern AI stack in pure C you can read ·
+  <span class="mono">nerve_discover.h</span>, one header, zero dependencies ·
+  Apache-2.0
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---- operator flags, mirroring nerve_discover.h ---------------------- */
+  var OP = {
+    ADD: 1 << 0, SUB: 1 << 1, MUL: 1 << 2, DIV: 1 << 3,
+    NEG: 1 << 4, INV: 1 << 5, SQR: 1 << 6, SQRT: 1 << 7,
+    EXP: 1 << 8, LOG: 1 << 9, SIN: 1 << 10, COS: 1 << 11, TANH: 1 << 12
+  };
+  var OPS = [
+    { key: "ADD",  label: "+",     on: true },
+    { key: "SUB",  label: "−",     on: true },
+    { key: "MUL",  label: "×",     on: true },
+    { key: "DIV",  label: "÷",     on: true },
+    { key: "SQR",  label: "x²",    on: true },
+    { key: "SQRT", label: "√x",    on: true },
+    { key: "INV",  label: "1/x",   on: true },
+    { key: "EXP",  label: "exp",   on: false },
+    { key: "LOG",  label: "log",   on: false },
+    { key: "SIN",  label: "sin",   on: false },
+    { key: "COS",  label: "cos",   on: false },
+    { key: "TANH", label: "tanh",  on: false }
+  ];
+
+  /* ---- the sample datasets -------------------------------------------- */
+  function rnd(seed) {                        /* small deterministic PRNG  */
+    var s = seed >>> 0;
+    return function () {
+      s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0;
+      return s / 4294967296;
+    };
+  }
+  function noisy(v, pct, r) { return v * (1 + pct * (r() - 0.5) * 2); }
+  function fx(v) { return (Math.abs(v) >= 1e4 || (Math.abs(v) < 1e-3 && v !== 0))
+                          ? v.toExponential(5) : v.toFixed(6); }
+
+  var SAMPLES = [
+    {
+      name: "Kepler · real planets",
+      note: "The nine bodies Kepler and his successors actually measured: " +
+            "semi-major axis in AU against orbital period in years. " +
+            "Nine rows, no noise model, no theory — the third law is in there.",
+      ops: OP.ADD | OP.SUB | OP.MUL | OP.DIV | OP.SQR | OP.SQRT | OP.INV,
+      csv:
+        "a,T\n" +
+        "0.387,0.2408\n0.723,0.6152\n1.000,1.0000\n1.524,1.8808\n" +
+        "5.204,11.862\n9.583,29.457\n19.191,84.016\n30.070,164.79\n" +
+        "39.482,247.94\n"
+    },
+    {
+      name: "Newton · gravitation",
+      note: "Two masses and a separation against the force between them, " +
+            "with 2% measurement noise. The inverse square is not hinted at " +
+            "anywhere in the input.",
+      ops: OP.ADD | OP.SUB | OP.MUL | OP.DIV | OP.SQR | OP.SQRT | OP.INV,
+      build: function () {
+        var r = rnd(20260831), out = "m1,m2,r,F\n", i;
+        for (i = 0; i < 140; i++) {
+          var m1 = 1 + 4 * r(), m2 = 1 + 4 * r(), rr = 1 + 2 * r();
+          out += fx(m1) + "," + fx(m2) + "," + fx(rr) + "," +
+                 fx(noisy(m1 * m2 / (rr * rr), 0.02, r)) + "\n";
+        }
+        return out;
+      }
+    },
+    {
+      name: "Pendulum · period",
+      note: "Length and local gravity against the swing period, 1% noise. " +
+            "The constant it has to recover is 2π.",
+      ops: OP.ADD | OP.SUB | OP.MUL | OP.DIV | OP.SQR | OP.SQRT | OP.INV,
+      build: function () {
+        var r = rnd(777), out = "L,g,T\n", i;
+        for (i = 0; i < 140; i++) {
+          var L = 0.2 + 1.8 * r(), g = 5 + 10 * r();
+          out += fx(L) + "," + fx(g) + "," +
+                 fx(noisy(2 * Math.PI * Math.sqrt(L / g), 0.01, r)) + "\n";
+        }
+        return out;
+      }
+    },
+    {
+      name: "Planck · blackbody",
+      note: "A genuinely hard one: an exponential in the denominator. " +
+            "Turn exp on before running this, or watch it fail honestly.",
+      ops: OP.ADD | OP.SUB | OP.MUL | OP.DIV | OP.SQR | OP.SQRT | OP.INV | OP.EXP,
+      build: function () {
+        var r = rnd(31337), out = "nu,T,B\n", i;
+        for (i = 0; i < 160; i++) {
+          var nu = 0.4 + 2.6 * r(), T = 1 + 4 * r();
+          out += fx(nu) + "," + fx(T) + "," +
+                 fx(nu * nu * nu / (Math.exp(nu / T) - 1)) + "\n";
+        }
+        return out;
+      }
+    },
+    {
+      name: "Air resistance",
+      note: "Terminal velocity against mass, drag coefficient and frontal " +
+            "area, 3% noise. A square root inside a quotient.",
+      ops: OP.ADD | OP.SUB | OP.MUL | OP.DIV | OP.SQR | OP.SQRT | OP.INV,
+      build: function () {
+        var r = rnd(4242), out = "m,Cd,A,v\n", i;
+        for (i = 0; i < 150; i++) {
+          var m = 1 + 9 * r(), Cd = 0.3 + 1.2 * r(), A = 0.2 + 1.8 * r();
+          out += fx(m) + "," + fx(Cd) + "," + fx(A) + "," +
+                 fx(noisy(Math.sqrt(2 * m * 9.81 / (1.225 * Cd * A)), 0.03, r)) + "\n";
+        }
+        return out;
+      }
+    }
+  ];
+
+  /* ---- DOM ------------------------------------------------------------- */
+  var $ = function (id) { return document.getElementById(id); };
+  var csvBox = $("csv"), statusEl = $("status"), bootEl = $("boot");
+  var liveEl = $("live"), barEl = $("bar"), genEl = $("gen"), genTot = $("gentot");
+  var errEl = $("err"), nodesEl = $("nnodes"), timingEl = $("timing");
+  var frontBody = $("front"), frontCard = $("frontcard"), dataInfo = $("datainfo");
+  var goBtn = $("go");
+
+  var chosenOps = {};
+  OPS.forEach(function (o) { chosenOps[o.key] = o.on; });
+
+  function renderOps() {
+    var box = $("ops");
+    box.innerHTML = "";
+    OPS.forEach(function (o) {
+      var el = document.createElement("span");
+      el.className = "chip" + (chosenOps[o.key] ? " on" : "");
+      el.textContent = o.label;
+      el.title = o.key.toLowerCase();
+      el.onclick = function () {
+        chosenOps[o.key] = !chosenOps[o.key];
+        renderOps();
+      };
+      box.appendChild(el);
+    });
+  }
+  function opMask() {
+    var m = 0;
+    OPS.forEach(function (o) { if (chosenOps[o.key]) m |= OP[o.key]; });
+    return m;
+  }
+  function setOpsFromMask(mask) {
+    OPS.forEach(function (o) { chosenOps[o.key] = (mask & OP[o.key]) !== 0; });
+    renderOps();
+  }
+
+  function loadSample(s) {
+    csvBox.value = s.build ? s.build() : s.csv;
+    setOpsFromMask(s.ops);
+    dataInfo.textContent = s.note;
+    frontCard.style.display = "none";
+    liveEl.textContent = "—";
+    liveEl.className = "eq";
+    barEl.style.width = "0";
+  }
+
+  (function renderSamples() {
+    var box = $("samples");
+    SAMPLES.forEach(function (s, i) {
+      var el = document.createElement("span");
+      el.className = "chip";
+      el.textContent = s.name;
+      el.onclick = function () {
+        Array.prototype.forEach.call(box.children, function (c) {
+          c.classList.remove("on");
+        });
+        el.classList.add("on");
+        loadSample(s);
+      };
+      box.appendChild(el);
+      if (i === 0) { el.classList.add("on"); loadSample(s); }
+    });
+  })();
+  renderOps();
+
+  /* ---- the worker ------------------------------------------------------ */
+  var worker = null, running = false, frontRows = [], t0 = 0;
+
+  function say(text, isError) {
+    statusEl.textContent = text || "";
+    statusEl.className = "status" + (isError ? " err" : "");
+  }
+
+  function startWorker() {
+    try {
+      worker = new Worker("worker.js");
+    } catch (e) {
+      bootEl.textContent = "worker blocked";
+      say("This page needs to be served over http:// — opening the file " +
+          "directly stops the browser from starting a worker.", true);
+      return;
+    }
+    worker.onmessage = function (e) { handle(e.data); };
+    worker.onerror = function (e) {
+      bootEl.textContent = "failed";
+      say("engine error: " + (e.message || "unknown"), true);
+      running = false; goBtn.disabled = false;
+    };
+  }
+
+  function handle(m) {
+    if (m.type === "ready") {
+      bootEl.textContent = "engine ready";
+      goBtn.disabled = false;
+      return;
+    }
+    if (m.type === "loaded") {
+      say(m.rows + " rows · " + m.vars + " input" + (m.vars === 1 ? "" : "s") +
+          " (" + m.names.join(", ") + ") → last column");
+      return;
+    }
+    if (m.type === "progress") {
+      genEl.textContent = m.gen;
+      genTot.textContent = m.total;
+      barEl.style.width = (100 * m.gen / Math.max(1, m.total)) + "%";
+      errEl.textContent = m.nrmse < 1e-9 ? "0" : m.nrmse.toPrecision(3);
+      nodesEl.textContent = m.nodes || "—";
+      if (m.expr) liveEl.textContent = m.expr;
+      return;
+    }
+    if (m.type === "front") {
+      frontRows.push(m);
+      return;
+    }
+    if (m.type === "done") {
+      running = false;
+      goBtn.disabled = false;
+      barEl.style.width = "100%";
+      liveEl.textContent = m.expr;
+      liveEl.className = "eq";
+      nodesEl.textContent = m.nodes;
+      timingEl.textContent = "found in " + m.seconds.toFixed(1) + " s, " +
+                             "R² " + m.r2.toFixed(6);
+      renderFront(m.nodes);
+      say("done — " + frontRows.length + " equations on the front");
+      return;
+    }
+    if (m.type === "error") {
+      running = false;
+      goBtn.disabled = false;
+      say(m.message, true);
+    }
+  }
+
+  function renderFront(kneeNodes) {
+    frontBody.innerHTML = "";
+    frontRows.forEach(function (r) {
+      var tr = document.createElement("tr");
+      if (r.nodes === kneeNodes) tr.className = "knee";
+      var a = document.createElement("td"); a.className = "n"; a.textContent = r.nodes;
+      var b = document.createElement("td"); b.className = "r";
+      b.textContent = (r.r2 > 0.99999 ? r.r2.toFixed(8) : r.r2.toFixed(6));
+      var c = document.createElement("td"); c.className = "f"; c.textContent = r.expr;
+      tr.appendChild(a); tr.appendChild(b); tr.appendChild(c);
+      frontBody.appendChild(tr);
+    });
+    frontCard.style.display = frontRows.length ? "" : "none";
+  }
+
+  goBtn.onclick = function () {
+    if (running || !worker) return;
+    var mask = opMask();
+    if (!(mask & (OP.ADD | OP.SUB | OP.MUL | OP.DIV))) {
+      say("leave at least one of + − × ÷ switched on", true);
+      return;
+    }
+    running = true;
+    goBtn.disabled = true;
+    frontRows = [];
+    frontCard.style.display = "none";
+    liveEl.textContent = "searching…";
+    liveEl.className = "eq small";
+    timingEl.textContent = "";
+    say("");
+    t0 = performance.now();
+    worker.postMessage({
+      cmd: "run",
+      csv: csvBox.value,
+      ops: mask,
+      generations: Math.max(20, parseInt($("gens").value, 10) || 250),
+      maxNodes: Math.max(5, parseInt($("nodes").value, 10) || 22),
+      population: 300,
+      seed: Math.max(1, parseInt($("seed").value, 10) || 1)
+    });
+  };
+
+  startWorker();
+})();
+</script>
+</body>
+</html>
