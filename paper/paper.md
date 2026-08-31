@@ -10,10 +10,10 @@ tags:
   - embedded systems
 authors:
   - name: Fatih Küçükkarakurt
-    orcid: 0000-0000-0000-0000
+    orcid: 0009-0009-0865-3958
     affiliation: 1
 affiliations:
-  - name: Independent researcher
+  - name: Independent Researcher
     index: 1
 date: 1 September 2026
 bibliography: paper.bib
