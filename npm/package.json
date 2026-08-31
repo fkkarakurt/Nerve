@@ -1,20 +1,27 @@
 {
   "name": "@fkkarakurt/nerve",
   "version": "2.1.1",
-  "description": "Run a real Transformer (text generation) and a MiniLM sentence-embedding model entirely in WebAssembly — browser or Node, no server, no GPU. Zero-dependency neural nets in pure C.",
+  "description": "Discover an equation from your data, run a real Transformer, and embed sentences — entirely in WebAssembly, browser or Node, no server, no GPU. Zero-dependency AI in pure C.",
   "type": "module",
   "main": "nerve.js",
   "module": "nerve.js",
   "types": "nerve.d.ts",
   "exports": {
-    ".": { "types": "./nerve.d.ts", "import": "./nerve.js" }
+    ".": { "types": "./nerve.d.ts", "import": "./nerve.js" },
+    "./discover": { "types": "./discover.d.ts", "import": "./discover.js" }
   },
-  "files": ["nerve.js", "nerve.d.ts", "nerve.mjs", "nerve.wasm", "README.md"],
+  "files": [
+    "nerve.js", "nerve.d.ts", "nerve.mjs", "nerve.wasm",
+    "discover.js", "discover.d.ts", "discover.mjs", "discover.wasm",
+    "README.md"
+  ],
   "sideEffects": false,
   "keywords": [
     "ai", "llm", "transformer", "embeddings", "sentence-embeddings", "minilm",
     "wasm", "webassembly", "on-device", "local-ai", "private-ai", "offline",
-    "text-generation", "semantic-search", "zero-dependency"
+    "text-generation", "semantic-search", "zero-dependency",
+    "symbolic-regression", "equation-discovery", "genetic-programming",
+    "interpretable-ml", "curve-fitting"
   ],
   "author": "Fatih Küçükkarakurt",
   "license": "Apache-2.0",

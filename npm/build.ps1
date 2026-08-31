@@ -1,4 +1,6 @@
-# Build the npm package's WASM artifacts (nerve.mjs / .wasm / .data).
+# Build the npm package's WASM artifacts:
+#   nerve.mjs / nerve.wasm       the LLM + sentence encoder (models embedded)
+#   discover.mjs / discover.wasm the equation discoverer (no models at all)
 # These are generated (gitignored) but ARE shipped on `npm publish` via the
 # package.json "files" field. Run this before publishing.
 #
@@ -23,4 +25,14 @@ $EF = "-sEXPORTED_FUNCTIONS=_nerve_web_init,_nerve_web_dim,_nerve_web_embed,_ner
   --embed-file model_q8.nrv --embed-file nerve.tok `
   --embed-file minilm_q8.nre --embed-file vocab.txt -lm
 Pop-Location
-Write-Output "built npm/nerve.mjs (+ .wasm, .data). Now: cd npm && npm publish"
+
+# The discoverer has no weights, so it needs no staging and no --embed-file.
+& $emcc (Join-Path $PSScriptRoot "nerve_discover.c") -O3 -Wall -Wextra -o (Join-Path $PSScriptRoot "discover.mjs") `
+  '-sMODULARIZE=1' '-sEXPORT_ES6=1' '-sEXPORT_NAME=createDiscover' '-sENVIRONMENT=web,node' `
+  '-sEXPORTED_FUNCTIONS=_main,_malloc,_free,_nd_json_fit,_nd_json_version' `
+  '-sEXPORTED_RUNTIME_METHODS=ccall,cwrap,HEAPF64,lengthBytesUTF8,stringToUTF8' `
+  '-sALLOW_MEMORY_GROWTH=1' -lm
+
+Get-ChildItem (Join-Path $PSScriptRoot "nerve.wasm") (Join-Path $PSScriptRoot "discover.wasm") |
+  Select-Object Name, Length
+Write-Output "built npm/nerve.mjs and npm/discover.mjs. Now: cd npm && npm publish"
