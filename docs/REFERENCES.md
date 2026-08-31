@@ -59,6 +59,18 @@ deploy) fits in code a person can hold in their head.
 | MiniLM distillation | Wang et al., *MiniLM: Deep Self-Attention Distillation*, NeurIPS 2020 |
 | Embedding anisotropy fix (mean-centering) | Mu & Viswanath, *All-but-the-Top*, ICLR 2018 |
 
+## Equation discovery (`nerve_discover.h`)
+
+| Component | Reference |
+|-----------|-----------|
+| Genetic programming over expression trees | Koza, *Genetic Programming*, MIT Press 1992 |
+| Linear scaling of candidates (`a·f(x)+b` solved, not searched) | Keijzer, *Improving Symbolic Regression with Interval Arithmetic and Linear Scaling*, EuroGP 2003 |
+| Symbolic regression for natural laws | Schmidt & Lipson, *Distilling Free-Form Natural Laws from Experimental Data*, Science 2009 |
+| Sparse identification of governing equations | Brunton, Proctor & Kutz, *SINDy*, PNAS 2016 |
+| The 100-equation benchmark set | Udrescu & Tegmark, *AI Feynman*, Science Advances 2020 |
+| Benchmark protocol and the R² ≥ 0.999 criterion | La Cava et al., *Contemporary Symbolic Regression Methods and their Relative Performance* (SRBench), NeurIPS 2021 |
+| Modern reference implementation (comparison point) | Cranmer, *Interpretable Machine Learning for Science with PySR*, 2023 |
+
 ## Efficiency
 
 | Component | Reference |

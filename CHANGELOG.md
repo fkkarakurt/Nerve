@@ -8,18 +8,106 @@
 ### Added — `nerve_discover.h`: symbolic regression in one header
 - **New single-header library: give it data, get back an equation.**
   `nerve_discover.h` discovers a compact, human-readable closed-form formula from
-  `(x, y)` samples — genetic programming over expression trees, with a parsimony
-  pressure so the answer stays as small as a real law should be, linear scaling
-  (Keijzer 2003) so each candidate finds its best `a·f(x)+b` for free, and a
-  numerical-gradient polish that recovers real constants. Zero dependencies beyond
-  libm; drop it in and `#include` it, the way you already use `nerve.h`. Runs
-  wherever C compiles, including the browser via WebAssembly.
-- API: `nd_fit`, `nd_eval`, `nd_r2`, `nd_print`, `nd_num_nodes`, `nd_free`,
-  `nd_defaults`; deterministic (seeded). `studies/discover/discover.c` rediscovers
-  the inverse-square law `F = m1·m2/r²` and Kepler's `T = √(a³)` from noisy samples
-  to R² > 0.99 in a handful of nodes.
-- The `studies/discover` demos now build under the same `-Wall -Wextra -pedantic
-  -Werror` bar as the rest of the suite in CI.
+  `(x, y)` samples — genetic programming over expression trees. Zero dependencies
+  beyond libm; drop it in and `#include` it, the way you already use `nerve.h`.
+  Runs wherever C compiles, including the browser via WebAssembly.
+- **It is measured, not asserted: 82 of the 100 Feynman equations**
+  recovered to R² ≥ 0.999 on held-out data. That set — the equations of the
+  Feynman Lectures catalogued by Udrescu & Tegmark — is the accuracy track of
+  SRBench and the standard yardstick in this field. The benchmark lives in
+  `bench/feynman/`, runs from a single `make`, downloads nothing, and prints
+  every failure next to every success. Protocol, budget and operator set are
+  written down in `bench/feynman/README.md` rather than left implicit.
+
+### Changed — the discovery engine, from a working spike to an engine
+The first cut proved the idea. This is the version built to be used, and the
+public API changed with it (`nd_fit` now returns an `nd_model`, not a single
+`nd_expr`).
+- **A Pareto front, not one answer.** `nd_fit` returns the best equation found
+  at *every* complexity, so a caller can see what each additional node bought.
+  `nd_knee` picks the simplest equation conceding no more than a given fraction
+  of the accuracy the front spans — scale-free, so it stays meaningful on exact
+  data where the best error is zero and any relative tolerance collapses.
+  Reporting a single most-accurate candidate is how a symbolic regressor
+  quietly turns into an unreadable one.
+- **An island model.** Several sub-populations evolve separately and trade
+  migrants, which is what stops a run collapsing onto one lineage. They also
+  carry graduated parsimony pressures, so some islands hunt accuracy and others
+  brevity — and between them they populate the front.
+- **Algebraic simplification.** Constant subtrees and the identities `x*1`,
+  `x+0`, `x-x`, `x/x` are folded as candidates are formed, and a root-level
+  canonicalisation drops the constant that the reported `a*f(x)+b` already
+  accounts for — which is why `((n*hbar) - 1) + 1` now prints as `n*hbar`.
+- **Constant recovery that works.** The old fixed-step numerical-gradient tuner
+  could diverge on stiff expressions and was applied once, at the end. It is
+  replaced by a derivative-free compass search that only ever accepts a strict
+  improvement, run on *admission to the archive* — so a candidate that has just
+  found the right shape is tuned before it is judged, instead of being
+  discarded for constants it was born with. A reflection probe precedes it,
+  because a constant born with the wrong sign is the one case coordinate
+  descent cannot fix: moving `c` from `+2` to `-0.5` in `exp(c*x²)` has to
+  cross `c = 0`, where the expression collapses and the error is at a local
+  maximum. With that in place the engine returns `0.398942*exp(-0.5*theta^2)`
+  for the Gaussian — and that leading constant is 1/√(2π) to six figures.
+- **A compiled evaluator.** Expression trees are flattened to a postfix
+  instruction array and run over the rows with an explicit stack, so the inner
+  loop walks contiguous memory instead of chasing child pointers once per row.
+  Fitness now costs one pass instead of two, the per-generation full sort of
+  the population is gone (only the elites are selected), and a discovered
+  equation is compiled once so `nd_eval` over a dataset no longer re-flattens
+  its tree for every row.
+- **New operators and control over them.** `x²`, `1/x`, `cos` and `tanh` join
+  the set, and `nd_options.ops` selects it — `ND_OPS_ALGEBRA` keeps an answer
+  to `+ − × ÷ x² √x 1/x`, which is what you want for anything meant to end up
+  in a design code. Restricting the operators is the single most effective way
+  to steer a search.
+- Added a progress callback (with early stopping), `nd_format` for writing an
+  equation into a caller's buffer, `nd_rmse`, and `nd_complexity`. `nd_fit` now
+  validates its arguments and returns `NULL` rather than trusting them.
+
+### Added — tests and a browser demo for the discovery engine
+- `tests/test_discover.c` — 72 checks over determinism, the structural
+  invariants of the front, self-consistency between what the engine reports and
+  what it evaluates, `nd_format` buffer safety, and degenerate input (NULL
+  arguments, a constant target, an empty operator set, budgets below every
+  floor). It runs in CI under AddressSanitizer and UndefinedBehaviorSanitizer,
+  which is where a library that allocates and frees expression trees by the
+  million needs to be run.
+- `web/discover/` — the engine in the browser. **A 70 KB WebAssembly module
+  with no data file at all**, because an equation discoverer carries no
+  weights: the page is usable the instant it loads, works offline, and the data
+  never leaves the tab. The search runs in a Web Worker and streams each new
+  best equation to the page, so the formula visibly sharpens instead of the tab
+  freezing. Given the nine planets as actually measured, it returns Kepler's
+  third law in about half a second. The CI WebAssembly job links it end to end
+  and fails if it outgrows its size budget.
+- The `studies/discover` demo now prints the whole front for three hidden laws,
+  and the geotechnical demo dataset it shares a directory with is tracked
+  again.
+- **npm: `@fkkarakurt/nerve/discover`.** A second entry point on the existing
+  package, deliberately separate because it needs no model — a ~62 KB module
+  against the main package's embedded weights, so it starts instantly.
+  `fromTable(csv)` or `fit({X, y, names})` returns the knee and the whole front
+  as plain objects; `Ops.ALGEBRA` and friends select the operator set. Given
+  the nine planets as a CSV string it returns `y = 0.999498*sqrt(a)*a -
+  0.0274583` at R² 1.0. Typed (`discover.d.ts`), and verified end to end under
+  Node.
+
+### Fixed
+- **`nd_format` could print an ambiguous formula.** A reciprocal node was
+  written as `1/x` rather than `(1/x)`, so an equation that used one on the
+  right of a division came out as `a/1/x` — which reads as `(a/1)/x`, not
+  `a/(1/x)`. The value computed by `nd_eval` was always right; the printed
+  formula, which is this library's entire output, was not. Reciprocal and
+  negation nodes are now fully bracketed, and a test pins it. The same pass
+  dropped the redundant brackets elsewhere: `y = mu*Nn` rather than
+  `y = (mu*Nn)`, `sqrt(L/g)` rather than `sqrt((L/g))`, `x^2` rather
+  than `(x)^2` — while keeping them wherever removing them would change how
+  the formula reads.
+- **Every new source file carries its SPDX identifier.** `nerve_discover.h` and
+  `studies/discover/discover.c` had shipped without one, which meant the
+  flagship header itself was the one file in the repository with no licence
+  grant on it.
 
 ### Licence — relicensed from GPL-3.0 to Apache-2.0
 - **Nerve is now Apache-2.0.** The previous GPL-3.0 terms made the library

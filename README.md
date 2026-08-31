@@ -54,6 +54,7 @@ runtime, no cloud, no per-token bill.
 
 | It can… | How | Proof |
 |---------|-----|-------|
+| **Discover the equation behind your data** | genetic programming over expression trees, with linear scaling, islands and a Pareto front, in one header | **82 of the 100 Feynman equations** recovered to R² ≥ 0.999 on held-out data — `bench/feynman` |
 | **Run a real 1.1B-parameter LLM** | decoder Transformer (RMSNorm, RoPE, GQA + KV-cache, SwiGLU, int8) in one header | TinyLlama-1.1B generates coherent text at ~3 tok/s on a laptop CPU — `studies/infer` |
 | **Learn from *you*, on-device** | a frozen model's features + a tiny head trained with Nerve's own autodiff | personalises to your categories in ~40 ms, privately — `studies/infer/learn.c` |
 | **Understand meaning** | a MiniLM BERT-style sentence encoder (int8, ~22 MB) | `hamburger → food`, `running shoes → fitness`; semantic search by meaning — `studies/embed` |
@@ -65,6 +66,71 @@ Every capability ships with a runnable proof, and every algorithm is grounded
 in its paper — see [`docs/REFERENCES.md`](docs/REFERENCES.md). Nerve does not try
 to out-scale the giants; it earns its place by being the most **readable,
 portable, reproducible** implementation of the same ideas.
+
+---
+
+## Give it numbers. Get back an equation.
+
+Every other model in this repository answers a question with parameters.
+[`nerve_discover.h`](nerve_discover.h) answers it with a **formula** — one you
+can read, check against theory, differentiate by hand, put in a paper, and
+afterwards evaluate in nanoseconds, forever, for free.
+
+```c
+#define NERVE_DISCOVER_IMPLEMENTATION
+#include "nerve_discover.h"
+
+nd_model *m = nd_fit(X, y, n, nvars, nd_defaults());
+nd_print(nd_knee(m, 0.05), names, stdout);
+nd_free(m);
+```
+
+Hand it 200 noisy samples of a force, two masses and a distance, and it comes
+back with this — never having been told that gravity, squares or division are
+involved:
+
+```
+y = 0.996748*(m2*m1)/r^2 + 0.00943491
+```
+
+Hand it the nine planets as actually measured, and it returns Kepler's third
+law in half a second. Hand it a Gaussian and it returns
+`0.398942*exp(-0.5*theta^2)`, where that leading constant is 1/√(2π) to six
+figures.
+
+**How good is it? Measured, not asserted.** The standard yardstick for this
+field is the 100 equations of the Feynman Lectures — the accuracy track of
+SRBench. Nerve recovers **82 of 100** to R² ≥ 0.999 on held-out data,
+one run each, identical budget, no per-problem tuning. The benchmark is
+[in the repository](bench/feynman/), runs from a single `make`, downloads
+nothing, and prints every failure alongside every success.
+
+The result is not one equation but a **Pareto front** — the best formula at
+every complexity — so you can see precisely what each extra term bought, and
+where it stopped buying anything:
+
+```
+ 1 nodes   R2  0.977612    y = 6.10996*a - 12.5517
+ 2 nodes   R2  0.987879    y = 0.161655*a^2 + 7.13717
+ 4 nodes   R2  0.99999951  y = 0.999498*a*sqrt(a) - 0.0274583      <- the knee
+ 6 nodes   R2  0.99999965  y = -1.00051*sqrt(a)*(0.0451932 - a) + 0.0384066
+ 8 nodes   R2  0.99999967  y = 1.00002*a*sqrt(sqrt(a^2 - -0.877334)) - 0.162988
+21 nodes   R2  0.99999969  y = 0.528091*((a/((a - 21.8141) - (a*sqrt(a)))) - ...
+```
+
+> ### [▶ Try it in your browser](https://fkkarakurt.github.io/Nerve/discover/)
+>
+> Paste a CSV, watch the equation evolve, get a formula. The whole engine is a
+> **70 KB WebAssembly module with no data file at all** — because an equation
+> discoverer has no weights to download, the page is usable the instant it
+> loads, works offline, and your data never leaves the tab.
+
+Symbolic regression is normally a heavyweight scientific-Python affair: PySR is
+a Python package over a Julia backend, AI Feynman needs a neural network. Those
+are fine research tools, and none of them can be embedded. This one is a single
+C99 header with no dependencies beyond `libm` — so it goes into an instrument,
+a microcontroller, a desktop binary or a browser tab, which is exactly where
+the interpreter cannot follow.
 
 ---
 
@@ -104,6 +170,17 @@ nerve.index([
   "Coffee contains caffeine, a stimulant.",
 ]);
 console.log(nerve.search("what keeps me awake?")); // [{ text: "Coffee contains...", score }]
+```
+
+Equation discovery is a separate entry point, because it needs no model at all
+— a ~62 KB module that starts instantly:
+
+```js
+import { load, Ops } from "@fkkarakurt/nerve/discover";
+
+const d = await load();
+const { knee } = d.fromTable(planetsCsv, { ops: Ops.ALGEBRA });
+console.log(knee.equation);  // y = 0.999498*sqrt(a)*a - 0.0274583   (R² = 1.0)
 ```
 
 > ### [▶ Try it live in your browser](https://fkkarakurt.github.io/Nerve/demo/)
@@ -417,24 +494,41 @@ gcc -O2 examples/01_xor.c -o xor -lm
 ## Tests
 
 ```bash
-gcc -O2 -std=c99 -Wall -Wextra tests/test_nerve.c -o test_nerve -lm && ./test_nerve
+gcc -O2 -std=c99 -Wall -Wextra tests/test_nerve.c    -o test_nerve    -lm && ./test_nerve
+gcc -O2 -std=c99 -Wall -Wextra tests/test_discover.c -o test_discover -lm && ./test_discover
 ```
 
-One file, no framework, no dependencies — the same one-line build as everything
-else here. It checks the generator against a reference implementation, verifies
-the backprop gradients against central finite differences, and round-trips every
-persistence format. CI runs it on Linux (GCC and Clang), macOS and Windows, under
-ASan + UBSan, and separately enforces that the core still compiles as strict
-ANSI C89 — the standards claim above is a build failure if it ever stops being
-true, not a line of marketing.
+One file each, no framework, no dependencies — the same one-line build as
+everything else here. The core suite checks the generator against a reference
+implementation, verifies the backprop gradients against central finite
+differences, and round-trips every persistence format. The discovery suite pins
+the structural invariants of the Pareto front, determinism under a fixed seed,
+buffer safety in the formatter, and behaviour on degenerate input. CI runs both
+on Linux (GCC and Clang), macOS and Windows, under ASan + UBSan, and separately
+enforces that the core still compiles as strict ANSI C89 — the standards claim
+above is a build failure if it ever stops being true, not a line of marketing.
+
+## Benchmarks
+
+```bash
+make -C bench/feynman full     # 100 equations, no download
+```
+
+Claims in this README that carry a number are produced by something in the
+repository that you can re-run. The equation-discovery figure comes from
+[`bench/feynman/`](bench/feynman/), whose protocol — budget, operator set,
+train/test split, and what counts as solved — is written down rather than
+implied.
 
 ## Academic foundations
 
 Nerve is a from-scratch implementation of established results, written to be
 read. Every component — attention, RoPE, RMSNorm, SwiGLU, GELU, BERT-style
-encoders, Adam, dropout, autodiff, int8 quantization — is grounded in its
-original paper in [`docs/REFERENCES.md`](docs/REFERENCES.md). The contribution is
-readability, portability and reproducibility, not new science.
+encoders, Adam, dropout, autodiff, int8 quantization, and the genetic
+programming, linear scaling and Pareto selection behind the discovery engine —
+is grounded in its original paper in
+[`docs/REFERENCES.md`](docs/REFERENCES.md). The contribution is readability,
+portability and reproducibility, not new science.
 
 ## Citation
 
