@@ -147,6 +147,10 @@ run_log.txt
 # -- Internal / not-public ------------------------------------------------------
 ROADMAP.md
 
+# Third-party and licensed datasets used while writing the geotechnical
+# studies. They are not ours to redistribute. Never force-add anything here.
+studies/geotechnical/dataset/
+
 # -- Obsolete assets ------------------------------------------------------------
 structure.png
 
